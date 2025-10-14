@@ -1,0 +1,17 @@
+<div class="modal fade" id="editProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">编辑项目信息</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><label for="editProjectName" class="form-label">项目名称</label><input type="text" class="form-control" id="editProjectName" required></div>
+                <div class="mb-3"><label for="editProjectNumber" class="form-label">项目编号</label><input type="text" class="form-control" id="editProjectNumber" required></div>
+                <div class="mb-3">
+                    <label for="editProcurementMethod" class="form-label">采购方式</label>
+                    <select class="form-select" id="editProcurementMethod" required></select>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" onclick="updateProject()">保存更改</button></div>
+        </div>
+    </div>
+</div>
+

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>管理模板: {{ template.name }} V{{template.version}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .section-card { margin-bottom: 2rem; }
+        .swal2-container { z-index: 2000; }
+        .swal2-title { font-size: 1.25rem !important; }
+        .swal2-html-container, .swal2-content { font-size: 0.9rem !important; }
+        .section-handle, .sheet-handle { cursor: grab; }
+        .sortable-ghost { opacity: 0.4; background: #f0f0f0; }
+    </style>
+</head>
+<body data-template-id="{{ template.id }}" data-readonly="{{ readonly | tojson }}" data-dynamic-models="{{ dynamic_models | tojson | safe }}">
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2">管理模板: <span class="text-primary">{{ template.name }}</span> <span class="badge bg-info">V{{template.version}}</span></h1>
+                <a href="/admin/templates">« 返回模板列表</a>
+                <span class="mx-2">|</span>
+                <a href="/admin/templates/history/{{ template.name }}">查看版本历史</a>
+            </div>
+            <div>
+                {% if not readonly %}
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importExcelModal">从Excel导入</button>
+                <button class="btn btn-primary" onclick="openNewSectionModal()">+ 新增分区</button>
+                {% else %}
+                <span class="badge bg-warning text-dark">只读模式</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if readonly %}
+        <div class="alert alert-warning">
+            您正在查看一个历史版本，此页面为 <strong>只读模式</strong>，无法进行任何修改操作。
+        </div>
+        {% else %}
+        <div class="alert alert-info">提示：您可以拖动分区卡片或每个分区内的Sheet行来调整它们的显示顺序。</div>
+        {% endif %}
+
+        <div id="sections-container">
+            {% for section in sections %}
+            <div class="card section-card" data-id="{{ section.id }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="section-handle me-2 {% if readonly %}d-none{% endif %}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+                        </span>
+                        <h5 class="mb-0">{{ section.name }}</h5>
+                    </div>
+                    {% if not readonly %}
+                    <div>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="openEditSectionModal({{ section.id }}, '{{ section.name }}')">编辑名称</button>
+                        <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSection({{ section.id }}, '{{ section.name }}')">删除分区</button>
+                        <button class="btn btn-primary btn-sm ms-2" onclick="openNewSheetModal({{ section.id }})">+ 新增Sheet</button>
+                    </div>
+                    {% endif %}
+                </div>
+                <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
+                    {% if section.sheets %}
+                        {% for sheet in section.sheets %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
+                            <div class="d-flex align-items-center">
+                                <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+                                </span>
+                                <div>
+                                    <span class="fw-bold">{{ sheet.name }}</span>
+                                    <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
+                                    {% if sheet.model_identifier %}
+                                        <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
+                                {% if not readonly %}
+                                <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if not sections %}
+            <div class="text-center p-5 border rounded bg-light">
+                <p class="text-muted">此模板下还没有任何分区，请点击右上角的“+ 新增分区”开始构建。</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% include 'partials/_template_detail_modals.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/static/js/admin_api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="/static/js/template_detail.js"></script>
+</body>
+</html>
+

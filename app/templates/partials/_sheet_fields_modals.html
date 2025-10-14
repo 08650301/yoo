@@ -1,0 +1,94 @@
+<!-- 字段弹窗 -->
+<div class="modal fade" id="fieldModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="fieldModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form id="fieldForm">
+                <div class="modal-body">
+                    <input type="hidden" id="fieldId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label for="fieldLabel" class="form-label">显示名称 (Label)</label><input type="text" class="form-control" id="fieldLabel" oninput="autoGenerateName()"></div>
+                        <div class="col-md-6 mb-3"><label for="fieldName" class="form-label">内部名称 (Name)</label><input type="text" class="form-control-plaintext" id="fieldName" readonly></div>
+                    </div>
+                    <div class="mb-3"><label for="fieldType" class="form-label">字段类型</label><select id="fieldType" class="form-select" onchange="updateModalUI()"><option value="text">单行文本</option><option value="textarea">多行文本</option><option value="number">数字</option><option value="date">日期</option><option value="select">下拉选择</option><option value="radio">单选按钮</option><option value="checkbox">复选框</option></select></div>
+                    <div class="mb-3 d-none" id="optionsGroup"><label for="fieldOptions" class="form-label">选项 (每行一个)</label><textarea id="fieldOptions" class="form-control" rows="3"></textarea></div>
+                    <div class="mb-3">
+                        <label for="fieldDefaultSingle" class="form-label">默认值 (可选)</label>
+                        <input type="text" class="form-control" id="fieldDefaultSingle">
+                        <textarea id="fieldDefaultMulti" class="form-control d-none" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3"><label for="fieldHelpTip" class="form-label">帮助提示 (可选)</label><textarea id="fieldHelpTip" class="form-control" rows="2"></textarea></div>
+                    <hr>
+                    <h6>基础校验规则</h6>
+                    <div class="d-flex mb-3">
+                        <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationRequired"><label class="form-check-label" for="validationRequired">必填</label></div>
+                        <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationDisabled"><label class="form-check-label" for="validationDisabled">只读</label></div>
+                        <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationAllowEnglishSpace"><label class="form-check-label" for="validationAllowEnglishSpace">允许英文空格</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="validationAllowChineseSpace"><label class="form-check-label" for="validationAllowChineseSpace">允许中文空格</label></div>
+                    </div>
+                    <div class="validation-group text-rules">
+                        <div class="mb-3"><label for="validationPattern" class="form-label">正则表达式</label><input type="text" class="form-control" id="validationPattern" placeholder="例如：^1[3-9]\d{9}$"></div>
+                        <div class="row">
+                            <div class="col-md-3"><label for="validationMinLength" class="form-label">最小长度</label><input type="number" class="form-control" id="validationMinLength"></div>
+                            <div class="col-md-3"><label for="validationMaxLength" class="form-label">最大长度</label><input type="number" class="form-control" id="validationMaxLength"></div>
+                            <div class="col-md-3">
+                                <label for="validationContains" class="form-label">必须包含</label>
+                                <textarea class="form-control" id="validationContains" rows="2"></textarea>
+                                <small class="form-text text-muted">一行一个, 支持?*通配符</small>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="validationExcludes" class="form-label">必须不包含</label>
+                                <textarea class="form-control" id="validationExcludes" rows="2"></textarea>
+                                <small class="form-text text-muted">一行一个, 支持?*通配符</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="validation-group numeric-rules">
+                         <div class="row">
+                            <div class="col-md-6"><label for="validationMinValue" class="form-label">最小值</label><input type="number" class="form-control" id="validationMinValue"></div>
+                            <div class="col-md-6"><label for="validationMaxValue" class="form-label">最大值</label><input type="number" class="form-control" id="validationMaxValue"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button id="saveFieldBtn" type="button" class="btn btn-primary" onclick="saveField()">保存</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 联动规则弹窗 -->
+<div class="modal fade" id="ruleModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="ruleModalTitle"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="ruleId">
+                <div class="mb-3">
+                    <label for="ruleName" class="form-label">规则名称</label>
+                    <input type="text" id="ruleName" class="form-control" placeholder="例如：当需要发票时，显示发票信息字段">
+                </div>
+                <hr>
+                <div class="p-3 mb-3" style="background-color: #e7f3fe; border-left: 5px solid #0d6efd;">
+                    <h6 class="fw-bold">如果 (IF)</h6>
+                    <div class="row align-items-center">
+                        <div class="col-md-4"><select id="if-field" class="form-select"></select></div>
+                        <div class="col-md-3"><select id="if-operator" class="form-select"></select></div>
+                        <div class="col-md-5"><input type="text" id="if-value" class="form-control" placeholder="输入比较值 (例如: 是, 100)"></div>
+                    </div>
+                </div>
+                <div class="p-3" style="background-color: #d1e7dd; border-left: 5px solid #198754;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">那么 (THEN)</h6>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addActionBlock('then')">+ 添加动作</button>
+                    </div>
+                    <div id="then-actions"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button id="saveRuleBtn" type="button" class="btn btn-primary" onclick="saveRule()">保存规则</button>
+            </div>
+        </div>
+    </div>
+</div>
+

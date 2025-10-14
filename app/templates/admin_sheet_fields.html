@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>管理字段: {{ sheet.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .swal2-container { z-index: 2000; }
+        .handle { cursor: grab; }
+        .sortable-ghost { opacity: 0.4; background: #f0f0f0; }
+        .validation-group { display: none; }
+        .action-block { border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin-bottom: 10px; background-color: #f9f9f9; }
+        .table th, .table td { vertical-align: middle; }
+    </style>
+</head>
+<body data-sheet-id="{{ sheet.id }}" data-readonly="{{ not sheet.section.template.is_latest | tojson | safe }}" data-fields="{{ fields_data }}">
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h2">管理: <span class="text-primary">{{ sheet.name }}</span></h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="/admin/templates">模板管理</a></li>
+                        <li class="breadcrumb-item"><a href="/admin/template/{{ sheet.section.template.id }}">{{ sheet.section.template.name }} V{{sheet.section.template.version}}</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ sheet.section.name }}</li>
+                    </ol>
+                </nav>
+            </div>
+            {% if sheet.section.template.is_latest %}
+                <div id="action-buttons"></div>
+            {% else %}
+                <span class="badge bg-warning text-dark">只读模式</span>
+            {% endif %}
+        </div>
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="fields-tab-btn" data-bs-toggle="tab" data-bs-target="#fields-tab" type="button" role="tab">字段列表</button>
+            </li>
+            {% if sheet.sheet_type == 'fixed_form' %}
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="rules-tab-btn" data-bs-toggle="tab" data-bs-target="#rules-tab" type="button" role="tab">联动规则</button>
+            </li>
+            {% endif %}
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <!-- 字段列表 Tab -->
+            <div class="tab-pane fade show active" id="fields-tab" role="tabpanel">
+                <div class="table-responsive mt-3">
+                    <table class="table table-hover table-bordered bg-white rounded shadow-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 3%;"></th>
+                                <th style="width: 15%;">显示名称</th>
+                                <th style="width: 15%;">内部名称</th>
+                                <th style="width: 10%;">字段类型</th>
+                                <th style="width: 7%;">必填</th>
+                                <th style="width: 7%;">只读</th>
+                                <th style="width: 10%;">长度限制</th>
+                                <th style="width: 10%;">数值范围</th>
+                                <th style="width: 13%;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fields-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 联动规则 Tab -->
+            {% if sheet.sheet_type == 'fixed_form' %}
+            <div class="tab-pane fade" id="rules-tab" role="tabpanel">
+                <div class="mt-3">
+                    <div id="rules-list" class="list-group"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% include 'partials/_sheet_fields_modals.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="/static/js/admin_api.js"></script>
+    <script src="/static/js/admin_sheet_fields.js"></script>
+</body>
+</html>
+

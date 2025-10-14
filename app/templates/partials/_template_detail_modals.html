@@ -1,0 +1,85 @@
+<!-- 新增分区的弹窗 -->
+<div class="modal fade" id="newSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">新增分区</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label for="sectionName" class="form-label">新分区名称</label>
+                <input type="text" class="form-control" id="sectionName" placeholder="例如：合同方案">
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" onclick="addSection()">创建</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑分区名称的弹窗 -->
+<div class="modal fade" id="editSectionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">编辑分区名称</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="editSectionId">
+                <label for="editSectionName" class="form-label">分区名称</label>
+                <input type="text" class="form-control" id="editSectionName">
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" onclick="updateSection()">保存更改</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增 Sheet 的弹窗 -->
+<div class="modal fade" id="newSheetModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">新增Sheet</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="currentSectionId">
+                <div class="mb-3"><label for="sheetName" class="form-label">新Sheet名称</label><input type="text" class="form-control" id="sheetName" required></div>
+                <div class="mb-3">
+                    <label for="sheetType" class="form-label">Sheet模式</label>
+                    <select id="sheetType" class="form-select" required onchange="toggleModelIdentifier()">
+                        <option value="fixed_form" selected>固定表单</option>
+                        <option value="dynamic_table">动态表格</option>
+                    </select>
+                </div>
+                <div class="mb-3 d-none" id="modelIdentifierGroup">
+                    <label for="modelIdentifier" class="form-label">数据模型 (身份证)</label>
+                    <select id="modelIdentifier" class="form-select">
+                        <option value="" selected disabled>请为动态表格选择一个数据模型...</option>
+                        {% for model_key in dynamic_models %}
+                            <option value="{{ model_key }}">{{ model_key }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" onclick="addSheet()">创建</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- 从 Excel 导入的弹窗 -->
+<div class="modal fade" id="importExcelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">从Excel导入Sheet</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <p>请上传一个`.xlsx`格式的Excel文件。系统将：</p>
+                    <ul>
+                        <li>将每个Sheet页的名称作为新的Sheet名称。</li>
+                        <li>读取每个Sheet页的列标题作为字段定义。</li>
+                        <li>所有导入的Sheet将被添加到一个以文件名命名的<strong>新分区</strong>中。</li>
+                    </ul>
+                </div>
+                <div class="mb-3">
+                    <label for="excelFile" class="form-label">选择Excel文件</label>
+                    <input class="form-control" type="file" id="excelFile" accept=".xlsx">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="uploadButton" onclick="uploadExcel()">开始导入</button>
+            </div>
+        </div>
+    </div>
+</div>
