@@ -31,7 +31,7 @@ def admin_templates():
             'version_count': version_count
         })
 
-    return render_template('admin_templates.html', templates=template_data)
+    return render_template('admin/admin_templates.html', templates=template_data)
 
 
 @admin_bp.route('/template/<int:template_id>')
@@ -40,7 +40,7 @@ def admin_template_detail(template_id):
     sections = template.sections
     # 【修复】将 dict_keys 转换为 list，以避免 JSON 序列化错误
     dynamic_models_list = list(DYNAMIC_TABLE_MODELS.keys())
-    return render_template('admin_template_detail.html', template=template, sections=sections,
+    return render_template('admin/admin_template_detail.html', template=template, sections=sections,
                            dynamic_models=dynamic_models_list, readonly=not template.is_latest)
 
 
@@ -49,7 +49,7 @@ def admin_template_history(template_name):
     versions = Template.query.filter_by(name=template_name).order_by(Template.version.desc()).all()
     if not versions:
         abort(404)
-    return render_template('admin_template_history.html', versions=versions, template_name=template_name)
+    return render_template('admin/admin_template_history.html', versions=versions, template_name=template_name)
 
 
 @admin_bp.route('/sheet/<int:sheet_id>/fields')
@@ -78,8 +78,8 @@ def admin_sheet_fields(sheet_id):
     # 使用Flask的json.dumps确保正确的JSON序列化
     from flask import json
     fields_data = json.dumps(fields_json, ensure_ascii=False)
-    
-    return render_template('admin_sheet_fields.html', sheet=sheet, fields_data=fields_data)
+
+    return render_template('admin/admin_sheet_fields.html', sheet=sheet, fields_data=fields_data)
 
 
 # ==============================================================================
@@ -562,6 +562,36 @@ def reorder_fields(sheet_id):
 # 后台管理API - 联动规则 (Conditional Rules)
 # ==============================================================================
 
+def is_rule_self_referential(definition):
+    """
+    检查联动规则的触发字段是否也是其目标字段之一，以防止死循环。
+    """
+    if not isinstance(definition, dict):
+        return False
+
+    # 从 'if' 条件中获取触发字段
+    if_clause = definition.get('if')
+    if not isinstance(if_clause, dict):
+        return False
+
+    trigger_field = if_clause.get('field')
+    if not trigger_field:
+        return False
+
+    # 检查 'then' 动作中的所有目标字段
+    then_clauses = definition.get('then', [])
+    if not isinstance(then_clauses, list):
+        return False
+
+    for action in then_clauses:
+        if isinstance(action, dict):
+            targets = action.get('targets', [])
+            if isinstance(targets, list) and trigger_field in targets:
+                return True  # 检测到自我引用
+
+    return False
+
+
 @admin_bp.route('/api/sheets/<int:sheet_id>/conditional_rules', methods=['GET'])
 def get_conditional_rules(sheet_id):
     try:
@@ -578,6 +608,10 @@ def create_conditional_rule(sheet_id):
         data = request.json
         if not data or not data.get('name') or not data.get('definition'):
             return jsonify({"error": "规则名称和定义为必填项"}), 400
+
+        # 【优化】在这里添加死循环验证
+        if is_rule_self_referential(data.get('definition')):
+            return jsonify({"error": "联动规则配置错误：触发条件的字段不能作为目标字段，这会造成死循环。"}), 400
 
         new_rule = ConditionalRule(
             sheet_id=sheet_id,
@@ -600,6 +634,10 @@ def update_conditional_rule(rule_id):
         if not data or not data.get('name') or not data.get('definition'):
             return jsonify({"error": "规则名称和定义为必填项"}), 400
 
+        # 【优化】在这里添加死循环验证
+        if is_rule_self_referential(data.get('definition')):
+            return jsonify({"error": "联动规则配置错误：触发条件的字段不能作为目标字段，这会造成死循环。"}), 400
+
         rule.name = data['name']
         rule.definition = data['definition']
         db.session.commit()
@@ -619,4 +657,3 @@ def delete_conditional_rule(rule_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
-
