@@ -7,12 +7,11 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/')
 def route_index():
     """渲染项目仪表盘主页"""
-    return render_template('index.html')
+    return render_template('main/index.html')
 
 
 @main_bp.route('/projects/<int:project_id>')
 def route_project_detail(project_id):
     """渲染特定项目的详细数据填报页面"""
     project = Project.query.get_or_404(project_id)
-    return render_template('project.html', project=project)
-
+    return render_template('main/project.html', project=project)
