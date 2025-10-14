@@ -8,9 +8,23 @@
     <style>
         body { overflow: hidden; font-size: 0.875rem; }
         h1, h2, h3, h4, h5, h6 { font-size: revert; }
-        .main-container { display: flex; height: 100vh; transition: margin-left 0.3s ease-in-out; }
-        .sidebar { width: 280px; flex-shrink: 0; background-color: #f8f9fa; border-right: 1px solid #dee2e6; padding: 1rem; overflow-y: auto; position: relative; transition: width 0.3s ease-in-out; }
-        .content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: hidden; }
+        .main-container { display: flex; height: 100vh; }
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding: 1rem;
+            overflow-y: auto;
+            position: relative; /* 定位锚点 */
+            transition: width 0.3s ease-in-out, padding 0.3s ease-in-out;
+        }
+        .content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden;
+        }
         .content-header { padding: 1.5rem 2rem; border-bottom: 1px solid #dee2e6; background-color: #fff; flex-shrink: 0; }
         .content-body { flex-grow: 1; padding: 2rem; overflow-y: auto; overflow-x: auto; }
         .sidebar .nav-link { color: #333; padding-left: 1.5rem; }
@@ -28,11 +42,9 @@
         .swal2-html-container, .swal2-content { font-size: 0.9rem !important; }
         .required-indicator { color: red; margin-left: 5px; }
 
-        /* Styles for the resizer */
         .resizer { width: 5px; cursor: ew-resize; background-color: #dee2e6; flex-shrink: 0; z-index: 100; transition: background-color 0.2s; }
         .resizer:hover { background-color: #0d6efd; }
 
-        /* Styles for sidebar toggle */
         #sidebar-toggle {
             position: absolute;
             top: 15px;
@@ -52,17 +64,24 @@
         #sidebar-toggle:hover { background-color: #0d6efd; color: #fff; }
         #sidebar-toggle::before { content: '◀'; font-family: sans-serif; }
 
-        /* Collapsed state */
         body.sidebar-collapsed .sidebar {
             width: 0 !important;
             min-width: 0;
-            padding: 0;
+            padding-left: 0;
+            padding-right: 0;
             border-right: none;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
+            /* 【最终修复】允许按钮溢出可见 */
+            overflow: visible !important;
         }
         body.sidebar-collapsed .resizer { width: 0; }
-        body.sidebar-collapsed #sidebar-toggle { transform: translateX(-10px) rotate(180deg); right: -25px; }
-        body.sidebar-collapsed #sidebar-toggle:hover { transform: translateX(-10px) rotate(180deg) scale(1.1); }
+        body.sidebar-collapsed #sidebar-toggle {
+            transform: rotate(180deg);
+        }
+        body.sidebar-collapsed #sidebar-toggle:hover {
+            transform: rotate(180deg) scale(1.1);
+        }
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">
@@ -106,7 +125,6 @@
     <script src="/static/js/project.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // --- Resizer Logic ---
             const handle = document.getElementById('drag-handle');
             const sidebar = document.querySelector('.sidebar');
             const content = document.querySelector('.content');
@@ -138,7 +156,6 @@
                 }
             });
 
-            // --- Toggle Logic ---
             const toggleButton = document.getElementById('sidebar-toggle');
             const body = document.body;
 
@@ -153,10 +170,8 @@
                 localStorage.setItem('sidebarCollapsed', isCollapsed);
 
                 if (isCollapsed) {
-                    // 折叠时，清除内联宽度，让CSS规则生效
                     sidebar.style.width = '';
                 } else {
-                    // 展开时，恢复之前保存的宽度
                     const savedWidth = localStorage.getItem('sidebarWidth');
                     if (savedWidth) {
                         sidebar.style.width = savedWidth;
