@@ -41,6 +41,29 @@
         <div class="alert alert-info">提示：您可以拖动分区卡片或每个分区内的Sheet行来调整它们的显示顺序。</div>
         {% endif %}
 
+        <!-- Word Template Upload Section -->
+        <div class="card section-card">
+            <div class="card-header">
+                <h5 class="mb-0">Word模板管理</h5>
+            </div>
+            <div class="card-body">
+                {% if template.word_template_path %}
+                    <p>当前已关联模板: <strong class="text-success">{{ template.word_template_path.split('/')[-1] }}</strong></p>
+                {% else %}
+                    <p class="text-muted">当前未关联任何Word模板。</p>
+                {% endif %}
+                {% if not readonly %}
+                <form id="upload-word-template-form">
+                    <div class="input-group">
+                        <input type="file" class="form-control" id="word_template_file" name="word_template" accept=".docx">
+                        <button class="btn btn-primary" type="submit">上传并关联</button>
+                    </div>
+                    <div class="form-text">请上传 `.docx` 格式的模板文件。上传新文件将会覆盖旧文件。</div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
         <div id="sections-container">
             {% for section in sections %}
             <div class="card section-card" data-id="{{ section.id }}">
@@ -105,6 +128,44 @@
     <script src="/static/js/admin_api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="/static/js/template_detail.js"></script>
+    <script>
+        document.getElementById('upload-word-template-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('word_template_file');
+            const file = fileInput.files[0];
+            if (!file) {
+                Swal.fire('错误', '请选择一个文件', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('word_template', file);
+
+            const templateId = document.body.dataset.templateId;
+            const uploadUrl = `/admin/api/templates/${templateId}/upload_word_template`;
+
+            fetch(uploadUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    Swal.fire({
+                        title: '成功',
+                        text: data.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('上传失败', data.error || '未知错误', 'error');
+                }
+            })
+            .catch(error => {
+                Swal.fire('上传失败', `请求错误: ${error}`, 'error');
+            });
+        });
+    </script>
 </body>
 </html>
-
