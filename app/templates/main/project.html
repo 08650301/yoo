@@ -8,8 +8,8 @@
     <style>
         body { overflow: hidden; font-size: 0.875rem; }
         h1, h2, h3, h4, h5, h6 { font-size: revert; }
-        .main-container { display: flex; height: 100vh; }
-        .sidebar { width: 280px; flex-shrink: 0; background-color: #f8f9fa; border-right: 1px solid #dee2e6; padding: 1rem; overflow-y: auto; }
+        .main-container { display: flex; height: 100vh; transition: margin-left 0.3s ease-in-out; }
+        .sidebar { width: 280px; flex-shrink: 0; background-color: #f8f9fa; border-right: 1px solid #dee2e6; padding: 1rem; overflow-y: auto; position: relative; transition: width 0.3s ease-in-out; }
         .content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: hidden; }
         .content-header { padding: 1.5rem 2rem; border-bottom: 1px solid #dee2e6; background-color: #fff; flex-shrink: 0; }
         .content-body { flex-grow: 1; padding: 2rem; overflow-y: auto; overflow-x: auto; }
@@ -27,14 +27,53 @@
         .swal2-title { font-size: 1.25rem !important; }
         .swal2-html-container, .swal2-content { font-size: 0.9rem !important; }
         .required-indicator { color: red; margin-left: 5px; }
+
+        /* Styles for the resizer */
+        .resizer { width: 5px; cursor: ew-resize; background-color: #dee2e6; flex-shrink: 0; z-index: 100; transition: background-color 0.2s; }
+        .resizer:hover { background-color: #0d6efd; }
+
+        /* Styles for sidebar toggle */
+        #sidebar-toggle {
+            position: absolute;
+            top: 15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 110;
+            transition: transform 0.3s ease-in-out;
+        }
+        #sidebar-toggle:hover { background-color: #0d6efd; color: #fff; }
+        #sidebar-toggle::before { content: '◀'; font-family: sans-serif; }
+
+        /* Collapsed state */
+        body.sidebar-collapsed .sidebar {
+            width: 0 !important;
+            min-width: 0;
+            padding: 0;
+            border-right: none;
+            overflow: hidden;
+        }
+        body.sidebar-collapsed .resizer { width: 0; }
+        body.sidebar-collapsed #sidebar-toggle { transform: translateX(-10px) rotate(180deg); right: -25px; }
+        body.sidebar-collapsed #sidebar-toggle:hover { transform: translateX(-10px) rotate(180deg) scale(1.1); }
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">
     <div class="main-container">
         <aside class="sidebar">
+            <div id="sidebar-toggle"></div>
             <div class="sidebar-header"><a href="/">« 返回项目列表</a></div>
             <nav id="sheet-nav" class="nav flex-column nav-pills"></nav>
         </aside>
+
+        <div class="resizer" id="drag-handle"></div>
 
         <main class="content">
             <div class="content-header">
@@ -65,6 +104,66 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/static/js/project.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Resizer Logic ---
+            const handle = document.getElementById('drag-handle');
+            const sidebar = document.querySelector('.sidebar');
+            const content = document.querySelector('.content');
+
+            const savedWidth = localStorage.getItem('sidebarWidth');
+            if (savedWidth) {
+                sidebar.style.width = savedWidth;
+            }
+
+            let isResizing = false;
+            handle.addEventListener('mousedown', function (e) {
+                isResizing = true;
+                document.body.style.userSelect = 'none';
+                document.body.style.pointerEvents = 'none';
+            });
+            document.addEventListener('mousemove', function (e) {
+                if (!isResizing) return;
+                let newWidth = e.clientX;
+                if (newWidth < 200) newWidth = 200;
+                if (newWidth > 600) newWidth = 600;
+                sidebar.style.width = newWidth + 'px';
+            });
+            document.addEventListener('mouseup', function (e) {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.userSelect = '';
+                    document.body.style.pointerEvents = '';
+                    localStorage.setItem('sidebarWidth', sidebar.style.width);
+                }
+            });
+
+            // --- Toggle Logic ---
+            const toggleButton = document.getElementById('sidebar-toggle');
+            const body = document.body;
+
+            const savedCollapsed = localStorage.getItem('sidebarCollapsed');
+            if (savedCollapsed === 'true') {
+                body.classList.add('sidebar-collapsed');
+            }
+
+            toggleButton.addEventListener('click', function () {
+                body.classList.toggle('sidebar-collapsed');
+                const isCollapsed = body.classList.contains('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+                if (isCollapsed) {
+                    // 折叠时，清除内联宽度，让CSS规则生效
+                    sidebar.style.width = '';
+                } else {
+                    // 展开时，恢复之前保存的宽度
+                    const savedWidth = localStorage.getItem('sidebarWidth');
+                    if (savedWidth) {
+                        sidebar.style.width = savedWidth;
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>
-
