@@ -260,7 +260,7 @@ def save_sheet_data(project_id, sheet_name):
         return jsonify({"message": f"'{sheet_name}' 保存成功"})
     except Exception as e:
         db.session.rollback()
-        print(f"保存失败! Sheet: {sheet_name}, 错误: {e}")
+        # print(f"保存失败! Sheet: {sheet_name}, 错误: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -313,6 +313,6 @@ def export_project_excel(project_id, section_name):
         return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                          as_attachment=True, download_name=filename)
     except Exception as e:
-        print(f"导出失败: {e}")
+        # print(f"导出失败: {e}")
         return jsonify({"error": str(e)}), 500
 
