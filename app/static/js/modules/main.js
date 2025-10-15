@@ -1,7 +1,7 @@
 // app/static/js/modules/main.js
 
 import { initializeSidebar } from './sidebar_handler.js';
-import { loadPreview, initializeLivePreview } from './live_preview.js';
+import { loadPreview, initializeLivePreview, updatePreviewOnLoad } from './live_preview.js';
 
 const projectId = document.body.dataset.projectId;
 const procurementMethod = document.body.dataset.procurementMethod;
@@ -270,6 +270,8 @@ function loadForm(sheetName, sectionName) {
             renderDynamicTable(contentDiv, config, data);
         }
         startAutoSave();
+        // Immediately update the preview based on the initial data.
+        updatePreviewOnLoad(data, config);
     });
 }
 

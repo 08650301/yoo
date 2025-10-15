@@ -2,6 +2,9 @@
 
 const projectId = document.body.dataset.projectId;
 
+/**
+ * 从服务器加载初始的Word模板HTML预览。
+ */
 export function loadPreview() {
     const previewContainer = document.getElementById('preview-content');
     if (!previewContainer) return;
@@ -20,17 +23,56 @@ export function loadPreview() {
         });
 }
 
-function updatePreviewForField(field) {
-    const fieldName = field.name;
-    if (!fieldName) return;
-
+/**
+ * 更新单个占位符的显示。
+ * @param {string} fieldName - 字段的内部名称。
+ * @param {string} value - 字段的当前值。
+ */
+function updatePlaceholder(fieldName, value) {
     const previewContainer = document.getElementById('preview-content');
     if (!previewContainer) return;
 
     const placeholders = previewContainer.querySelectorAll(`[data-placeholder-for="${fieldName}"]`);
     if (placeholders.length === 0) return;
 
+    placeholders.forEach(span => {
+        if (value) {
+            span.textContent = value;
+        } else {
+            span.textContent = '**********';
+        }
+        span.style.color = 'red';
+    });
+}
+
+
+/**
+ * 【新函数】在表单加载时，根据后端数据直接更新所有预览。
+ * @param {object} data - 从 /api/projects/.../sheets/ GET 请求获取的表单数据。
+ * @param {object} config - 当前表单的配置对象。
+ */
+export function updatePreviewOnLoad(data, config) {
+    if (!config || !config.fields) return;
+
+    config.fields.forEach(field => {
+        const fieldName = field.name;
+        const value = (data && data[fieldName]) ? data[fieldName] : (field.default_value || '');
+        updatePlaceholder(fieldName, value);
+    });
+}
+
+
+/**
+ * 处理实时输入事件，更新单个字段的预览。
+ * @param {Event} event - DOM 事件对象。
+ */
+function handleLiveUpdate(event) {
+    const field = event.target;
+    if (!field) return;
+
+    const fieldName = field.name;
     let value = field.value;
+
     if (field.type === 'checkbox') {
         value = field.checked ? '是' : '否';
     } else if (field.type === 'radio') {
@@ -38,28 +80,16 @@ function updatePreviewForField(field) {
         value = checkedRadio ? checkedRadio.value : '';
     }
 
-    placeholders.forEach(span => {
-        if (value) {
-            span.textContent = value;
-            span.style.color = 'red';
-        } else {
-            // Revert to original placeholder text if value is empty
-            span.textContent = `{{${fieldName}}}`;
-            span.style.color = '';
-        }
-    });
+    updatePlaceholder(fieldName, value);
 }
 
+/**
+ * 为表单容器内的所有输入元素初始化实时监听。
+ */
 export function initializeLivePreview() {
     const formContainer = document.getElementById('sheet-content');
     if (!formContainer) return;
 
-    const eventHandler = (event) => {
-        if (event.target && (event.target.matches('input, textarea, select'))) {
-            updatePreviewForField(event.target);
-        }
-    };
-
-    formContainer.addEventListener('input', eventHandler);
-    formContainer.addEventListener('change', eventHandler);
+    formContainer.addEventListener('input', handleLiveUpdate);
+    formContainer.addEventListener('change', handleLiveUpdate);
 }
