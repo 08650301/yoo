@@ -302,7 +302,7 @@ function renderFixedForm(container, config, data) {
             case 'textarea':
                 fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
-            case 'select':
+            case 'select': // This is now 'select-single'
                 fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')}>`;
                 fieldHtml += `<option value="">--- 请选择 ---</option>`;
                 (field.options || '').split(',').forEach(opt => {
@@ -310,15 +310,6 @@ function renderFixedForm(container, config, data) {
                     fieldHtml += `<option value="${trimmedOpt}" ${value === trimmedOpt ? 'selected' : ''}>${trimmedOpt}</option>`;
                 });
                 fieldHtml += `</select>`;
-                break;
-            case 'checkbox':
-                const checkedAttr = value === 'True' || value === true ? 'checked' : '';
-                // For checkboxes, the label is typically placed after the input.
-                fieldHtml = `
-                    <div class="form-check">
-                        <input name="${field.name}" id="field-${field.name}" type="checkbox" class="form-check-input" ${checkedAttr} ${readonlyAttr}>
-                        <label class="form-check-label" for="field-${field.name}">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>
-                    </div>`;
                 break;
             case 'radio':
                 fieldHtml = `<div>${labelHtml}</div>`;
@@ -331,6 +322,30 @@ function renderFixedForm(container, config, data) {
                             <label class="form-check-label" for="${radioId}">${trimmedOpt}</label>
                         </div>`;
                 });
+                break;
+            case 'checkbox-group':
+                fieldHtml = `<div>${labelHtml}</div>`;
+                const selectedValues = (value || '').split(',').map(v => v.trim());
+                (field.options || '').split(',').forEach((opt, index) => {
+                    const trimmedOpt = opt.trim();
+                    const checkId = `field-${field.name}-${index}`;
+                    const checkedAttr = selectedValues.includes(trimmedOpt) ? 'checked' : '';
+                    fieldHtml += `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${trimmedOpt}" ${checkedAttr} ${readonlyAttr}>
+                            <label class="form-check-label" for="${checkId}">${trimmedOpt}</label>
+                        </div>`;
+                });
+                break;
+            case 'select-multiple':
+                const selectedMulti = (value || '').split(',').map(v => v.trim());
+                fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')} multiple>`;
+                (field.options || '').split(',').forEach(opt => {
+                    const trimmedOpt = opt.trim();
+                    const selectedAttr = selectedMulti.includes(trimmedOpt) ? 'selected' : '';
+                    fieldHtml += `<option value="${trimmedOpt}" ${selectedAttr}>${trimmedOpt}</option>`;
+                });
+                fieldHtml += `</select>`;
                 break;
             default: // text, number, date, etc.
                 fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" value="${value}" ${commonAttrs}>`;
@@ -374,17 +389,26 @@ function saveData(isAuto) {
 
     if (config.type === 'fixed_form') {
         payload = {};
-        // Manually build payload to handle unchecked checkboxes correctly
+        // Manually build payload to handle new field types
         config.fields.forEach(field => {
-            const el = formElement.querySelector(`[name="${field.name}"]`);
-            if (el) {
-                if (el.type === 'checkbox') {
-                    payload[field.name] = el.checked ? 'True' : 'False';
-                } else if (el.type === 'radio') {
-                    const checkedRadio = formElement.querySelector(`[name="${field.name}"]:checked`);
-                    payload[field.name] = checkedRadio ? checkedRadio.value : '';
-                } else {
-                    payload[field.name] = el.value;
+            if (field.type === 'checkbox-group') {
+                const checkedBoxes = formElement.querySelectorAll(`input[name="${field.name}"]:checked`);
+                payload[field.name] = Array.from(checkedBoxes).map(cb => cb.value).join(',');
+            } else if (field.type === 'select-multiple') {
+                const selectElement = formElement.querySelector(`select[name="${field.name}"]`);
+                if (selectElement) {
+                    const selectedOptions = Array.from(selectElement.selectedOptions).map(opt => opt.value);
+                    payload[field.name] = selectedOptions.join(',');
+                }
+            } else {
+                const el = formElement.querySelector(`[name="${field.name}"]`);
+                if (el) {
+                    if (el.type === 'radio') {
+                        const checkedRadio = formElement.querySelector(`[name="${field.name}"]:checked`);
+                        payload[field.name] = checkedRadio ? checkedRadio.value : '';
+                    } else {
+                        payload[field.name] = el.value;
+                    }
                 }
             }
         });

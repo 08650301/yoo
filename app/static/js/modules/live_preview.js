@@ -45,7 +45,7 @@ function updatePlaceholder(fieldName, value) {
         } else {
             span.innerHTML = '**********';
         }
-        span.style.color = 'red';
+        // Styling is now handled by a dedicated CSS rule in project.html
     });
 }
 

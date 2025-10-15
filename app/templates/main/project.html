@@ -99,6 +99,12 @@
         body.sidebar-collapsed #resizer-1 { width: 0; }
         body.sidebar-collapsed #sidebar-toggle { transform: rotate(180deg); }
         body.sidebar-collapsed #sidebar-toggle:hover { transform: rotate(180deg) scale(1.1); }
+
+        /* Style for preview placeholders to handle whitespace and color */
+        #preview-content span[data-placeholder-for] {
+            white-space: pre-wrap;
+            color: red;
+        }
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">
