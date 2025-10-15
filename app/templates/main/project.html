@@ -6,47 +6,68 @@
     <title>项目填报 - {{ project.name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* 【修复】移除 body 上的 overflow: hidden */
         body { font-size: 0.875rem; }
-        h1, h2, h3, h4, h5, h6 { font-size: revert; }
-        /* 【修复】让 main-container 控制高度和溢出 */
         .main-container { display: flex; height: 100vh; overflow: hidden; }
+        h1, h2, h3, h4, h5, h6 { font-size: revert; }
+
+        /* Column Styles */
         .sidebar {
-            width: 280px;
+            width: 250px;
             flex-shrink: 0;
             background-color: #f8f9fa;
             border-right: 1px solid #dee2e6;
-            padding: 1rem;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
             transition: width 0.3s ease-in-out, padding 0.3s ease-in-out;
         }
         .content {
+            width: 50%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: hidden;
+            position: relative;
+        }
+        .preview-pane {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             overflow-y: hidden;
-            position: relative; /* 定位锚点 */
+            background-color: #e9ecef;
         }
+
+        /* Headers and Bodies */
+        .sidebar-body { overflow-y: auto; padding: 1rem; }
         .content-header { padding: 1.5rem 2rem; border-bottom: 1px solid #dee2e6; background-color: #fff; flex-shrink: 0; }
         .content-body { flex-grow: 1; padding: 2rem; overflow-y: auto; overflow-x: auto; }
+        .preview-header { padding: 1rem; border-bottom: 1px solid #dee2e6; background-color: #f8f9fa; flex-shrink: 0; }
+        .preview-header h4 { font-size: 1rem; font-weight: 600; margin: 0; }
+        .preview-body { flex-grow: 1; padding: 1.5rem; overflow-y: auto; }
+
+        /* Sidebar specific styles */
         .sidebar .nav-link { color: #333; padding-left: 1.5rem; }
         .sidebar .nav-pills .nav-link.active { color: #fff; }
-        #save-status { color: #6c757d; font-style: italic; transition: opacity 0.5s ease-in-out; }
-        .rank-col.hidden, .form-group-hidden { display: none; }
-        .sidebar-header a { font-size: 1.1rem; font-weight: 600; color: #0d6efd !important; text-decoration: none; display: block; padding-bottom: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid #dee2e6; }
-        .content-header h1 { font-size: 1.2rem; font-weight: 600; }
-        .btn-edit { padding: 0.1rem 0.4rem; margin-left: 0.5rem; }
+        .sidebar-header { padding: 1rem; flex-shrink: 0; }
+        .sidebar-header a { font-size: 1.1rem; font-weight: 600; color: #0d6efd !important; text-decoration: none; display: block; padding-bottom: 0.75rem; border-bottom: 1px solid #dee2e6; }
         .sidebar-section-title { font-size: 0.9rem; font-weight: bold; color: #6c757d; padding: 0.75rem 0.25rem 0.25rem; margin-top: 1rem; border-bottom: 1px solid #dee2e6; cursor: pointer; position: relative; }
         .sidebar-section-title::after { content: '▼'; position: absolute; right: 0.25rem; font-size: 0.7rem; transition: transform 0.2s ease-in-out; }
         .sidebar-section-title.collapsed::after { transform: rotate(-90deg); }
+
+        /* Other element styles */
+        #save-status { color: #6c757d; font-style: italic; transition: opacity 0.5s ease-in-out; }
+        .rank-col.hidden, .form-group-hidden { display: none; }
+        .content-header h1 { font-size: 1.2rem; font-weight: 600; }
+        .btn-edit { padding: 0.1rem 0.4rem; margin-left: 0.5rem; }
         .swal2-container { z-index: 2000; }
         .swal2-title { font-size: 1.25rem !important; }
         .swal2-html-container, .swal2-content { font-size: 0.9rem !important; }
         .required-indicator { color: red; margin-left: 5px; }
 
+        /* Resizer Styles */
         .resizer { width: 5px; cursor: ew-resize; background-color: #dee2e6; flex-shrink: 0; z-index: 100; transition: background-color 0.2s; }
         .resizer:hover { background-color: #0d6efd; }
 
+        /* Toggle Button Styles */
         #sidebar-toggle {
             position: absolute;
             top: 15px;
@@ -66,35 +87,34 @@
         #sidebar-toggle:hover { background-color: #0d6efd; color: #fff; }
         #sidebar-toggle::before { content: '◀'; font-family: sans-serif; }
 
+        /* Collapsed State Styles */
         body.sidebar-collapsed .sidebar {
             width: 0 !important;
             min-width: 0;
             padding-left: 0;
             padding-right: 0;
             border-right: none;
-            /* 【修复】移除错误的 overflow: visible，让内容正确隐藏 */
             overflow: hidden !important;
         }
-        body.sidebar-collapsed .resizer { width: 0; }
-        body.sidebar-collapsed #sidebar-toggle {
-            transform: rotate(180deg);
-        }
-        body.sidebar-collapsed #sidebar-toggle:hover {
-            transform: rotate(180deg) scale(1.1);
-        }
+        body.sidebar-collapsed #resizer-1 { width: 0; }
+        body.sidebar-collapsed #sidebar-toggle { transform: rotate(180deg); }
+        body.sidebar-collapsed #sidebar-toggle:hover { transform: rotate(180deg) scale(1.1); }
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">
     <div class="main-container">
         <aside class="sidebar">
-            <div class="sidebar-header"><a href="/">« 返回项目列表</a></div>
-            <nav id="sheet-nav" class="nav flex-column nav-pills"></nav>
+            <div class="sidebar-header">
+                <a href="/">« 返回项目列表</a>
+            </div>
+            <div class="sidebar-body">
+                <nav id="sheet-nav" class="nav flex-column nav-pills"></nav>
+            </div>
         </aside>
 
-        <div class="resizer" id="drag-handle"></div>
+        <div class="resizer" id="resizer-1"></div>
 
         <main class="content">
-            <!-- 【修复】按钮放在 main.content 内部 -->
             <div id="sidebar-toggle"></div>
 
             <div class="content-header">
@@ -103,7 +123,10 @@
                         <h1 class="mb-0" id="project-name-display">{{ project.name }}<button class="btn btn-outline-secondary btn-sm btn-edit" onclick="openEditModal()">编辑</button></h1>
                         <p class="text-muted mb-0"><span id="project-number-display">{{ project.number }}</span> - <span id="project-method-display" class="fw-bold">{{ project.procurement_method }}</span></p>
                     </div>
-                    <button id="export-button" class="btn btn-success btn-sm" disabled onclick="exportProject()">选择表单后导出</button>
+                    <div>
+                        <button id="export-word-button" class="btn btn-info btn-sm" disabled onclick="exportWord()">导出为Word</button>
+                        <button id="export-button" class="btn btn-success btn-sm ms-2" disabled onclick="exportProject()">导出为Excel</button>
+                    </div>
                 </div>
             </div>
 
@@ -118,6 +141,17 @@
                 <div class="mt-4"><button id="save-button" class="btn btn-primary d-none" onclick="manualSave()">保存当前表单</button></div>
             </div>
         </main>
+
+        <div class="resizer" id="resizer-2"></div>
+
+        <aside class="preview-pane">
+            <div class="preview-header">
+                <h4>文档预览</h4>
+            </div>
+            <div id="preview-content" class="preview-body">
+                <p class="text-muted">请先在后台为该模板关联一个Word模板文件。</p>
+            </div>
+        </aside>
     </div>
 
     {% include 'partials/_project_modals.html' %}
@@ -127,37 +161,71 @@
     <script src="/static/js/project.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const handle = document.getElementById('drag-handle');
             const sidebar = document.querySelector('.sidebar');
             const content = document.querySelector('.content');
+            const preview = document.querySelector('.preview-pane');
+            const resizer1 = document.getElementById('resizer-1');
+            const resizer2 = document.getElementById('resizer-2');
 
-            const savedWidth = localStorage.getItem('sidebarWidth');
-            if (savedWidth) {
-                sidebar.style.width = savedWidth;
-            }
+            let activeResizer = null;
 
-            let isResizing = false;
-            handle.addEventListener('mousedown', function (e) {
-                isResizing = true;
+            // --- Load saved widths ---
+            const savedSidebarWidth = localStorage.getItem('sidebarWidth');
+            const savedContentWidth = localStorage.getItem('contentWidth');
+            if (savedSidebarWidth) sidebar.style.width = savedSidebarWidth;
+            if (savedContentWidth) content.style.width = savedContentWidth;
+
+            // --- Resizer Logic ---
+            const onMouseDown = (e) => {
+                activeResizer = e.target;
                 document.body.style.userSelect = 'none';
                 document.body.style.pointerEvents = 'none';
-            });
-            document.addEventListener('mousemove', function (e) {
-                if (!isResizing) return;
-                let newWidth = e.clientX;
-                if (newWidth < 200) newWidth = 200;
-                if (newWidth > 600) newWidth = 600;
-                sidebar.style.width = newWidth + 'px';
-            });
-            document.addEventListener('mouseup', function (e) {
-                if (isResizing) {
-                    isResizing = false;
-                    document.body.style.userSelect = '';
-                    document.body.style.pointerEvents = '';
-                    localStorage.setItem('sidebarWidth', sidebar.style.width);
-                }
-            });
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            };
 
+            const onMouseMove = (e) => {
+                if (!activeResizer) return;
+
+                if (activeResizer === resizer1) {
+                    let newWidth = e.clientX;
+                    if (newWidth < 200) newWidth = 200;
+                    if (newWidth > 600) newWidth = 600;
+                    sidebar.style.width = newWidth + 'px';
+                } else if (activeResizer === resizer2) {
+                    const containerWidth = document.querySelector('.main-container').offsetWidth;
+                    const sidebarWidth = sidebar.offsetWidth;
+                    const resizer1Width = resizer1.offsetWidth;
+                    let newContentWidth = e.clientX - sidebarWidth - resizer1Width;
+
+                    if (newContentWidth < 300) newContentWidth = 300; // Min content width
+                    if (containerWidth - sidebarWidth - resizer1Width - newContentWidth - resizer2.offsetWidth < 300) {
+                        newContentWidth = containerWidth - sidebarWidth - resizer1Width - resizer2.offsetWidth - 300; // Min preview width
+                    }
+                    content.style.width = newContentWidth + 'px';
+                }
+            };
+
+            const onMouseUp = () => {
+                if (!activeResizer) return;
+
+                if (activeResizer === resizer1) {
+                    localStorage.setItem('sidebarWidth', sidebar.style.width);
+                } else if (activeResizer === resizer2) {
+                    localStorage.setItem('contentWidth', content.style.width);
+                }
+
+                activeResizer = null;
+                document.body.style.userSelect = '';
+                document.body.style.pointerEvents = '';
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            resizer1.addEventListener('mousedown', onMouseDown);
+            resizer2.addEventListener('mousedown', onMouseDown);
+
+            // --- Toggle Logic ---
             const toggleButton = document.getElementById('sidebar-toggle');
             const body = document.body;
 
@@ -175,9 +243,7 @@
                     sidebar.style.width = '';
                 } else {
                     const savedWidth = localStorage.getItem('sidebarWidth');
-                    if (savedWidth) {
-                        sidebar.style.width = savedWidth;
-                    }
+                    if (savedWidth) sidebar.style.width = savedWidth;
                 }
             });
         });

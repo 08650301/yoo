@@ -35,10 +35,10 @@ class ConditionalLogicEngine {
             el.addEventListener('change', () => this.evaluateAllRules());
             el.addEventListener('input', () => this.evaluateAllRules());
         });
-        
+
         // 处理初始disabled状态
         this._applyInitialDisabledState();
-        
+
         // 页面加载后立即执行一次所有规则，以设置初始状态
         // 使用setTimeout确保在DOM完全渲染后再执行规则评估
         setTimeout(() => this.evaluateAllRules(), 200);
@@ -49,15 +49,15 @@ class ConditionalLogicEngine {
         Object.keys(this.fields).forEach(fieldName => {
             const fieldConfig = this.fields[fieldName];
             const isOriginallyDisabled = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
-            
+
             if (isOriginallyDisabled) {
                 const elements = this.form.querySelectorAll(`[name="${fieldName}"]`);
                 if (elements.length === 0) return;
-                
+
                 const wrapper = elements[0].closest('.mb-3, .form-check');
                 const label = wrapper?.querySelector('label:not(.form-check-label)');
                 const isOriginallyRequired = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'required' && r.rule_value === 'True');
-                
+
                 elements.forEach(el => {
                     el.disabled = true;
                     // 当字段被禁用时，移除必填验证和必填标识
@@ -189,10 +189,10 @@ class ConditionalLogicEngine {
                         const fieldConfig = this.fields[targetName];
                         const isOriginallyRequired = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'required' && r.rule_value === 'True');
                         const isOriginallyDisabled = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
-                        
+
                         // 恢复disabled状态（如果原始状态是disabled，则保持disabled）
                         el.disabled = isOriginallyDisabled;
-                        
+
                         // 恢复必填状态
                         el.required = isOriginallyRequired && !isOriginallyDisabled;
                         if (isOriginallyRequired && !isOriginallyDisabled) {
@@ -323,7 +323,26 @@ window.onload = function() {
     fetch(`/api/forms-config/${procurementMethod}`)
         .then(response => response.json()).then(data => { masterConfig = data; createSidebarNav(data.sections); });
     loadProcurementMethods();
+    loadPreview();
 };
+
+function loadPreview() {
+    const previewContainer = document.getElementById('preview-content');
+    if (!previewContainer) return;
+    previewContainer.innerHTML = '<p class="text-muted">正在加载预览...</p>';
+    fetch(`/api/projects/${projectId}/preview`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.html) {
+                previewContainer.innerHTML = data.html;
+            } else {
+                previewContainer.innerHTML = `<p class="text-danger">加载预览失败: ${data.error || '未知错误'}</p>`;
+            }
+        })
+        .catch(error => {
+            previewContainer.innerHTML = `<p class="text-danger">加载预览时发生网络错误: ${error}</p>`;
+        });
+}
 
 function loadProcurementMethods() {
     fetch('/api/published-templates').then(r => r.json()).then(methods => {
@@ -370,9 +389,14 @@ function loadForm(sheetName, sectionName) {
     visibleRankCount = 5;
     currentSheetName = sheetName;
     currentSectionName = sectionName;
-    const exportButton = document.getElementById('export-button');
-    exportButton.textContent = `导出 ${sectionName} excel`;
-    exportButton.disabled = false;
+
+    // Enable both export buttons
+    const exportExcelButton = document.getElementById('export-button');
+    exportExcelButton.textContent = `导出 ${sectionName} Excel`;
+    exportExcelButton.disabled = false;
+    const exportWordButton = document.getElementById('export-word-button');
+    exportWordButton.disabled = false;
+
     const config = masterConfig.sections[sectionName].forms[sheetName];
     document.getElementById('sheet-title').textContent = sheetName;
     const contentDiv = document.getElementById('sheet-content');
@@ -420,10 +444,11 @@ function renderFixedForm(container, config, data) {
             const spaceValidationAttr = (allowEnglishSpace || allowChineseSpace) ? `data-allow-english-space="${allowEnglishSpace}" data-allow-chinese-space="${allowChineseSpace}"` : '';
             const labelHtml = `<label class="form-label">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>`;
 
+        // 为所有字段添加 data-field-name 属性，用于实时预览
         if (field.type === 'textarea') {
-            fieldHtml = `${labelHtml}<textarea class="form-control" name="${field.name}" rows="3" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>${value}</textarea>`;
+            fieldHtml = `${labelHtml}<textarea class="form-control" name="${field.name}" data-field-name="${field.name}" rows="3" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>${value}</textarea>`;
         } else if (field.type === 'select') {
-             fieldHtml = `${labelHtml}<select class="form-select" name="${field.name}" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>`;
+             fieldHtml = `${labelHtml}<select class="form-select" name="${field.name}" data-field-name="${field.name}" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>`;
             const options = field.options ? field.options.split(',') : [];
             fieldHtml += `<option value="">请选择...</option>`;
             options.forEach(opt => fieldHtml += `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`);
@@ -435,7 +460,7 @@ function renderFixedForm(container, config, data) {
                 const radioId = `${field.name}-${index}`;
                 fieldHtml += `
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${opt}" ${value === opt ? 'checked' : ''} ${requiredAttr} ${disabledAttr}>
+                        <input class="form-check-input" type="radio" name="${field.name}" data-field-name="${field.name}" id="${radioId}" value="${opt}" ${value === opt ? 'checked' : ''} ${requiredAttr} ${disabledAttr}>
                         <label class="form-check-label" for="${radioId}">${opt}</label>
                     </div>
                 `;
@@ -443,7 +468,7 @@ function renderFixedForm(container, config, data) {
         } else if (field.type === 'checkbox') {
             // 检查是否有选项配置，如果有则渲染为下拉选择框
             if (field.options && field.options.trim()) {
-                fieldHtml = `${labelHtml}<select class="form-select" name="${field.name}" ${requiredAttr} ${disabledAttr}>`;
+                fieldHtml = `${labelHtml}<select class="form-select" name="${field.name}" data-field-name="${field.name}" ${requiredAttr} ${disabledAttr}>`;
                 const options = field.options.split(',');
                 fieldHtml += `<option value="">请选择...</option>`;
                 options.forEach(opt => {
@@ -457,13 +482,13 @@ function renderFixedForm(container, config, data) {
                 const checkedAttr = value === 'True' || value === true ? 'checked' : '';
                 fieldHtml = `
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="${field.name}" id="${field.name}" ${checkedAttr} ${disabledAttr}>
+                        <input class="form-check-input" type="checkbox" name="${field.name}" data-field-name="${field.name}" id="${field.name}" ${checkedAttr} ${disabledAttr}>
                         <label class="form-check-label" for="${field.name}">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>
                     </div>
                 `;
             }
         } else {
-             fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" class="form-control" name="${field.name}" value="${value}" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>`;
+             fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" class="form-control" name="${field.name}" data-field-name="${field.name}" value="${value}" ${requiredAttr} ${disabledAttr} ${spaceValidationAttr}>`;
         }
         formGroup.innerHTML = fieldHtml;
         container.appendChild(formGroup);
@@ -526,14 +551,14 @@ function saveData(skipValidation = false) {
         Swal.fire('输入错误', '请检查表单中标红的必填项或无效项。', 'warning');
         return;
     }
-    
+
     // 空格验证
     if (!skipValidation) {
         const inputs = form.querySelectorAll('input[type="text"], input[type="text"], textarea');
         for (let input of inputs) {
             const allowEnglishSpace = input.getAttribute('data-allow-english-space') === 'true';
             const allowChineseSpace = input.getAttribute('data-allow-chinese-space') === 'true';
-            
+
             if (input.value) {
                 // 检查英文空格
                 if (!allowEnglishSpace && input.value.includes(' ')) {
@@ -541,7 +566,7 @@ function saveData(skipValidation = false) {
                     input.focus();
                     return;
                 }
-                
+
                 // 检查中文空格
                 if (!allowChineseSpace && input.value.includes('　')) {
                     Swal.fire('输入错误', `${input.name}字段不允许包含中文空格`, 'warning');
@@ -582,7 +607,7 @@ function saveData(skipValidation = false) {
                 for (let input of inputs) {
                     const allowEnglishSpace = input.getAttribute('data-allow-english-space') === 'true';
                     const allowChineseSpace = input.getAttribute('data-allow-chinese-space') === 'true';
-                    
+
                     if (input.value) {
                         // 检查英文空格
                         if (!allowEnglishSpace && input.value.includes(' ')) {
@@ -590,7 +615,7 @@ function saveData(skipValidation = false) {
                             input.focus();
                             return;
                         }
-                        
+
                         // 检查中文空格
                         if (!allowChineseSpace && input.value.includes('　')) {
                             Swal.fire('输入错误', `${input.dataset.name}字段不允许包含中文空格`, 'warning');
@@ -601,7 +626,7 @@ function saveData(skipValidation = false) {
                 }
             }
         }
-        
+
         document.querySelectorAll('#dynamic-table tbody tr').forEach(row => {
             const rowData = {};
             row.querySelectorAll('input, textarea').forEach(input => {
@@ -628,6 +653,17 @@ function saveData(skipValidation = false) {
     });
 }
 function manualSave() { saveData(false); } // 手动保存时进行验证
+
+function exportWord() {
+    const button = document.getElementById('export-word-button');
+    button.innerHTML = `<span class="spinner-border spinner-border-sm"></span> 正在生成...`;
+    button.disabled = true;
+    // Redirect to the new word export API endpoint
+    window.location.href = `/api/projects/${projectId}/export_word`;
+    // Reset button state after a delay
+    setTimeout(() => { button.innerHTML = `导出为Word`; button.disabled = false; }, 5000);
+}
+
 function exportProject() {
     if (!currentSectionName) { Swal.fire('提示', '请先选择一个模块下的表单！', 'info'); return; }
     const button = document.getElementById('export-button');
@@ -714,11 +750,49 @@ function triggerChange() {
 }
 function startAutoSave() {
     document.getElementById('sheet-content').addEventListener('input', triggerChange);
+    initializeLivePreview(); // 在这里启动实时预览的监听
     periodicSaveTimer = setInterval(() => {
         if (hasChanges) {
             saveData(true); // 自动保存时跳过验证
         }
     }, 30000);
+}
+
+function initializeLivePreview() {
+    const formContainer = document.getElementById('sheet-content');
+    formContainer.addEventListener('input', updatePreview);
+    formContainer.addEventListener('change', updatePreview);
+}
+
+function updatePreview(event) {
+    const field = event.target;
+    const fieldName = field.dataset.fieldName;
+    if (!fieldName) return;
+
+    const previewContainer = document.getElementById('preview-content');
+    if (!previewContainer) return;
+
+    const placeholders = previewContainer.querySelectorAll(`[data-placeholder-for="${fieldName}"]`);
+    if (placeholders.length === 0) return;
+
+    let value = field.value;
+    if (field.type === 'checkbox') {
+        value = field.checked ? '是' : '否';
+    } else if (field.type === 'radio') {
+        const checkedRadio = document.querySelector(`[name="${fieldName}"]:checked`);
+        value = checkedRadio ? checkedRadio.value : '';
+    }
+
+    placeholders.forEach(span => {
+        if (value) {
+            span.textContent = value;
+            span.style.color = 'red';
+        } else {
+            // 如果值为空，恢复原始占位符文本和默认颜色
+            span.textContent = `{{${fieldName}}}`;
+            span.style.color = ''; // 恢复默认颜色
+        }
+    });
 }
 function updateSaveStatus(status) {
     saveStatusEl.textContent = status;
