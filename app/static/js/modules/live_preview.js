@@ -2,7 +2,6 @@
 
 const projectId = document.body.dataset.projectId;
 
-// Function to load the initial preview content from the server
 export function loadPreview() {
     const previewContainer = document.getElementById('preview-content');
     if (!previewContainer) return;
@@ -21,10 +20,7 @@ export function loadPreview() {
         });
 }
 
-// Function to handle real-time updates from form inputs to the preview pane
-function updatePreview(event) {
-    const field = event.target;
-    // Use the 'name' attribute directly, which is more robust than dataset in some event delegation scenarios.
+function updatePreviewForField(field) {
     const fieldName = field.name;
     if (!fieldName) return;
 
@@ -47,15 +43,23 @@ function updatePreview(event) {
             span.textContent = value;
             span.style.color = 'red';
         } else {
+            // Revert to original placeholder text if value is empty
             span.textContent = `{{${fieldName}}}`;
-            span.style.color = ''; // Revert to default color
+            span.style.color = '';
         }
     });
 }
 
-// Function to initialize the live preview listeners on the form
 export function initializeLivePreview() {
     const formContainer = document.getElementById('sheet-content');
-    formContainer.addEventListener('input', updatePreview);
-    formContainer.addEventListener('change', updatePreview);
+    if (!formContainer) return;
+
+    const eventHandler = (event) => {
+        if (event.target && (event.target.matches('input, textarea, select'))) {
+            updatePreviewForField(event.target);
+        }
+    };
+
+    formContainer.addEventListener('input', eventHandler);
+    formContainer.addEventListener('change', eventHandler);
 }

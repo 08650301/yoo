@@ -40,14 +40,160 @@ function updateSaveStatus(text) {
     }
 }
 
-// ConditionalLogicEngine class and other functions remain the same as in the original project.js
+// ==============================================================================
+// 联动规则引擎 (Conditional Logic Engine)
+// ==============================================================================
 class ConditionalLogicEngine {
     constructor(formId, rules, fields) {
         this.form = document.getElementById(formId);
         this.rules = rules;
-        // ... (rest of the class is the same)
+        this.fields = fields.reduce((acc, f) => ({ ...acc, [f.name]: f }), {});
+        this.originalOptions = {};
     }
-    // ... (all methods of the class are the same)
+
+    init() {
+        this.form.querySelectorAll('input, textarea, select').forEach(el => {
+            const fieldName = el.name;
+            if (this.originalOptions[fieldName] === undefined && el.tagName === 'SELECT') {
+                 this.originalOptions[fieldName] = Array.from(el.options).map(opt => ({ value: opt.value, text: opt.text }));
+            }
+            el.addEventListener('change', () => this.evaluateAllRules());
+            el.addEventListener('input', () => this.evaluateAllRules());
+        });
+
+        this._applyInitialDisabledState();
+
+        setTimeout(() => this.evaluateAllRules(), 200);
+    }
+
+    _applyInitialDisabledState() {
+        Object.keys(this.fields).forEach(fieldName => {
+            const fieldConfig = this.fields[fieldName];
+            const isOriginallyDisabled = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+
+            if (isOriginallyDisabled) {
+                const elements = this.form.querySelectorAll(`[name="${fieldName}"]`);
+                if (elements.length === 0) return;
+
+                const wrapper = elements[0].closest('.mb-3, .form-check');
+                const label = wrapper?.querySelector('label:not(.form-check-label)');
+
+                elements.forEach(el => {
+                    el.disabled = true;
+                    el.required = false;
+                    el.removeAttribute('required');
+                    if (label) {
+                        const requiredIndicator = label.querySelector('.required-indicator');
+                        if (requiredIndicator) {
+                            requiredIndicator.remove();
+                        }
+                    }
+                    el.removeAttribute('data-allow-english-space');
+                    el.removeAttribute('data-allow-chinese-space');
+                });
+            }
+        });
+    }
+
+    _getFieldValue(fieldName) {
+        const el = this.form.querySelector(`[name="${fieldName}"]`);
+        if (!el) return null;
+        if (el.type === 'radio') return this.form.querySelector(`[name="${fieldName}"]:checked`)?.value || '';
+        if (el.type === 'checkbox') return el.checked;
+        return el.value;
+    }
+
+    _checkCondition(condition) {
+        let value = this._getFieldValue(condition.field);
+        if (typeof value === 'boolean') {
+            value = value ? '是' : '否';
+        } else if (value === 'True') {
+            value = '是';
+        } else if (value === 'False') {
+            value = '否';
+        }
+        const conditionValue = condition.value;
+
+        switch(condition.operator) {
+            case 'equals': return value == conditionValue;
+            case 'not_equals': return value != conditionValue;
+            case 'contains': return String(value).includes(conditionValue);
+            case 'not_contains': return !String(value).includes(conditionValue);
+            case 'is_empty': return value === null || value === undefined || value === '';
+            case 'is_not_empty': return value !== null && value !== undefined && value !== '';
+            case 'greater_than': return Number(value) > Number(conditionValue);
+            case 'less_than': return Number(value) < Number(conditionValue);
+            case 'greater_than_or_equals': return Number(value) >= Number(conditionValue);
+            case 'less_than_or_equals': return Number(value) <= Number(conditionValue);
+            default: return false;
+        }
+    }
+
+    evaluateAllRules() {
+        this.rules.forEach(rule => this.applyRule(rule));
+    }
+
+    applyRule(rule) {
+        const ruleDefinition = rule.definition || rule;
+        const conditionMet = this._checkCondition(ruleDefinition.if);
+        ruleDefinition.then.forEach(action => this._executeAction(action, conditionMet, rule));
+    }
+
+    _executeAction(action, conditionMet, rule) {
+        (action.targets || []).forEach(targetName => {
+            const elements = this.form.querySelectorAll(`[name="${targetName}"]`);
+            if (elements.length === 0) return;
+
+            const wrapper = elements[0].closest('.mb-3, .form-check');
+            const label = wrapper?.querySelector('label:not(.form-check-label)');
+            const fieldConfig = this.fields[targetName];
+            const isOriginallyRequired = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'required' && r.rule_value === 'True');
+            const isOriginallyDisabled = (fieldConfig.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+
+            const actionType = action.action || action.type;
+            switch(actionType) {
+                case 'show': wrapper?.classList.toggle('form-group-hidden', !conditionMet); break;
+                case 'hide': wrapper?.classList.toggle('form-group-hidden', conditionMet); break;
+                case 'enable': elements.forEach(el => {
+                    el.disabled = !conditionMet;
+                    if (conditionMet) {
+                        el.required = isOriginallyRequired;
+                        if (isOriginallyRequired) {
+                            el.setAttribute('required', 'required');
+                        } else {
+                            el.removeAttribute('required');
+                        }
+                    }
+                }); break;
+                case 'disable': elements.forEach(el => {
+                    el.disabled = conditionMet;
+                    if (conditionMet) {
+                        el.required = false;
+                        el.removeAttribute('required');
+                        const wrapper = el.closest('.mb-3, .form-check');
+                        const label = wrapper?.querySelector('label:not(.form-check-label)');
+                        if (label) {
+                            const requiredIndicator = label.querySelector('.required-indicator');
+                            if (requiredIndicator) {
+                                requiredIndicator.remove();
+                            }
+                        }
+                    } else {
+                        el.disabled = isOriginallyDisabled;
+                        el.required = isOriginallyRequired && !isOriginallyDisabled;
+                        if (isOriginallyRequired && !isOriginallyDisabled) {
+                            el.setAttribute('required', 'required');
+                            const wrapper = el.closest('.mb-3, .form-check');
+                            const label = wrapper?.querySelector('label:not(.form-check-label)');
+                            if (label && !label.querySelector('.required-indicator')) {
+                                label.insertAdjacentHTML('beforeend', '<span class="required-indicator">*</span>');
+                            }
+                        }
+                    }
+                }); break;
+            }
+        });
+    }
 }
 
 function loadProcurementMethods() {
@@ -113,6 +259,7 @@ function loadForm(sheetName, sectionName) {
     fetch(`/api/projects/${projectId}/sheets/${sheetName}`).then(r => r.json()).then(data => {
         if (config.type === 'fixed_form') {
             renderFixedForm(contentDiv, config, data);
+            // Logic restored from the main branch's project.js
             if (config.conditional_rules && config.conditional_rules.length > 0) {
                 setTimeout(() => {
                     logicEngine = new ConditionalLogicEngine('sheet-content', config.conditional_rules, config.fields);
@@ -130,120 +277,56 @@ function loadForm(sheetName, sectionName) {
 window.loadForm = loadForm;
 
 function renderFixedForm(container, config, data) {
+    container.innerHTML = '';
     config.fields.forEach(field => {
+        const fieldValue = data[field.name];
+        const value = (fieldValue === undefined || fieldValue === null || fieldValue === '') ? (field.default_value || '') : fieldValue;
+        const rules = (field.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
+        const isRequired = (rules.required || '').toLowerCase() === 'true';
+        const isReadonly = (rules.readonly || '').toLowerCase() === 'true';
+
         const formGroup = document.createElement('div');
         formGroup.className = 'mb-3';
         formGroup.setAttribute('data-field-name', field.name);
 
-        const label = document.createElement('label');
-        label.htmlFor = `field-${field.name}`;
-        label.className = 'form-label';
-        label.textContent = field.label;
+        let fieldHtml = '';
+        const requiredAttr = isRequired ? 'required' : '';
+        const readonlyAttr = isReadonly ? 'readonly' : '';
+        const labelHtml = `<label class="form-label" for="field-${field.name}">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>`;
 
-        if (field.validation_rules && field.validation_rules.some(r => r.rule_type === 'required')) {
-            const requiredSpan = document.createElement('span');
-            requiredSpan.className = 'required-indicator';
-            requiredSpan.textContent = '*';
-            label.appendChild(requiredSpan);
-        }
-        formGroup.appendChild(label);
-
-        let inputElement;
-        const value = (data && data[field.name]) ? data[field.name] : (field.default_value || '');
+        const commonAttrs = `name="${field.name}" id="field-${field.name}" class="form-control" ${requiredAttr} ${readonlyAttr}`;
 
         switch (field.type) {
             case 'textarea':
-                inputElement = document.createElement('textarea');
-                inputElement.className = 'form-control';
-                inputElement.rows = 3;
-                inputElement.value = value;
+                fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
             case 'select':
-                inputElement = document.createElement('select');
-                inputElement.className = 'form-select';
-                const options = field.options ? field.options.split(',') : [];
-                // Add a blank option for non-required fields
-                if (!field.validation_rules || !field.validation_rules.some(r => r.rule_type === 'required')) {
-                    const blankOpt = document.createElement('option');
-                    blankOpt.value = '';
-                    blankOpt.textContent = '--- 请选择 ---';
-                    inputElement.appendChild(blankOpt);
-                }
-                options.forEach(opt => {
-                    const option = document.createElement('option');
-                    option.value = opt.trim();
-                    option.textContent = opt.trim();
-                    if (opt.trim() === value) {
-                        option.selected = true;
-                    }
-                    inputElement.appendChild(option);
+                fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')}>`;
+                fieldHtml += `<option value="">--- 请选择 ---</option>`;
+                (field.options || '').split(',').forEach(opt => {
+                    const trimmedOpt = opt.trim();
+                    fieldHtml += `<option value="${trimmedOpt}" ${value === trimmedOpt ? 'selected' : ''}>${trimmedOpt}</option>`;
                 });
+                fieldHtml += `</select>`;
                 break;
             case 'radio':
-                inputElement = document.createElement('div');
-                const radioOptions = field.options ? field.options.split(',') : [];
-                radioOptions.forEach(opt => {
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'form-check';
-                    const radioInput = document.createElement('input');
-                    radioInput.type = 'radio';
-                    radioInput.className = 'form-check-input';
-                    radioInput.name = field.name;
-                    radioInput.value = opt.trim();
-                    radioInput.id = `field-${field.name}-${opt.trim().replace(/\s+/g, '-')}`;
-                    if (opt.trim() === value) {
-                        radioInput.checked = true;
-                    }
-                    const radioLabel = document.createElement('label');
-                    radioLabel.className = 'form-check-label';
-                    radioLabel.htmlFor = radioInput.id;
-                    radioLabel.textContent = opt.trim();
-                    wrapper.appendChild(radioInput);
-                    wrapper.appendChild(radioLabel);
-                    inputElement.appendChild(wrapper);
+                fieldHtml = `<div>${labelHtml}</div>`;
+                (field.options || '').split(',').forEach((opt, index) => {
+                    const trimmedOpt = opt.trim();
+                    const radioId = `field-${field.name}-${index}`;
+                    fieldHtml += `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${trimmedOpt}" ${value === trimmedOpt ? 'checked' : ''} ${requiredAttr} ${readonlyAttr}>
+                            <label class="form-check-label" for="${radioId}">${trimmedOpt}</label>
+                        </div>`;
                 });
                 break;
             default: // text, number, date, etc.
-                inputElement = document.createElement('input');
-                inputElement.type = field.type;
-                inputElement.className = 'form-control';
-                inputElement.value = value;
+                fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" value="${value}" ${commonAttrs}>`;
                 break;
         }
 
-        if (inputElement.tagName !== 'DIV') {
-            inputElement.id = `field-${field.name}`;
-            inputElement.name = field.name;
-            // Add the dataset attribute required by live_preview.js
-            inputElement.dataset.fieldName = field.name;
-        } else {
-            // For radio buttons, add the dataset to each individual input
-            inputElement.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.dataset.fieldName = field.name;
-            });
-        }
-
-        // Apply validation rules as attributes
-        if (field.validation_rules) {
-            field.validation_rules.forEach(rule => {
-                if (rule.rule_type === 'required') {
-                    if (inputElement.tagName !== 'DIV') inputElement.required = true;
-                } else if (rule.rule_type === 'readonly' && (rule.rule_value === 'true' || rule.rule_value === True)) {
-                    if (inputElement.tagName !== 'DIV') inputElement.readOnly = true;
-                } else if (inputElement.tagName !== 'DIV') {
-                    // For other rules like min, max, pattern, etc.
-                    inputElement.setAttribute(rule.rule_type, rule.rule_value);
-                }
-            });
-        }
-
-        formGroup.appendChild(inputElement);
-
-        const helpTip = document.createElement('div');
-        helpTip.className = 'form-text';
-        helpTip.textContent = field.help_tip || '';
-        formGroup.appendChild(helpTip);
-
+        formGroup.innerHTML = fieldHtml;
         container.appendChild(formGroup);
     });
 }
