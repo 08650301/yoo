@@ -220,8 +220,56 @@ def get_sheet_data(project_id, sheet_name):
 
 @api_bp.route('/projects/<int:project_id>/sheets/<string:sheet_name>', methods=['POST'])
 def save_sheet_data(project_id, sheet_name):
-    # ... (existing code, no changes needed here)
-    pass
+    """
+    保存单个表单（Sheet）的数据。
+    支持固定表单和动态表格两种类型。
+    """
+    try:
+        project = Project.query.get_or_404(project_id)
+        config = find_sheet_config_from_db(project.procurement_method, sheet_name)
+        if not config:
+            return jsonify({"error": "Sheet配置不存在"}), 404
+
+        data = request.json
+
+        if config['type'] == 'fixed_form':
+            # 先删除该项目该表单的所有旧数据
+            FixedFormData.query.filter_by(project_id=project_id, sheet_name=sheet_name).delete()
+            # 插入新数据
+            for field_name, field_value in data.items():
+                if field_value is not None:  # 只保存非空的字段
+                    entry = FixedFormData(
+                        project_id=project_id,
+                        sheet_name=sheet_name,
+                        field_name=field_name,
+                        field_value=str(field_value)
+                    )
+                    db.session.add(entry)
+
+        elif config['type'] == 'dynamic_table':
+            model_identifier = config.get('model_identifier')
+            Model = DYNAMIC_TABLE_MODELS.get(model_identifier)
+            if not Model:
+                return jsonify({"error": f"未找到标识符为 {model_identifier} 的模型"}), 404
+
+            # 先删除该项目在该表中的所有旧数据
+            Model.query.filter_by(project_id=project_id).delete()
+            # 插入新数据
+            for row_data in data:
+                # 过滤掉前端可能传来的空行
+                if any(val for val in row_data.values()):
+                    row_data['project_id'] = project_id
+                    entry = Model(**row_data)
+                    db.session.add(entry)
+
+        db.session.commit()
+        return jsonify({"message": f"表单 '{sheet_name}' 数据已成功保存"})
+
+    except Exception as e:
+        db.session.rollback()
+        # 在日志中记录更详细的错误
+        # current_app.logger.error(f"Error saving sheet data: {e}")
+        return jsonify({"error": f"保存数据时发生错误: {str(e)}"}), 500
 
 @api_bp.route('/projects/<int:project_id>/export/<string:section_name>')
 def export_project_excel(project_id, section_name):

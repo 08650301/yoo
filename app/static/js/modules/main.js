@@ -214,6 +214,13 @@ function renderFixedForm(container, config, data) {
         if (inputElement.tagName !== 'DIV') {
             inputElement.id = `field-${field.name}`;
             inputElement.name = field.name;
+            // Add the dataset attribute required by live_preview.js
+            inputElement.dataset.fieldName = field.name;
+        } else {
+            // For radio buttons, add the dataset to each individual input
+            inputElement.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.dataset.fieldName = field.name;
+            });
         }
         formGroup.appendChild(inputElement);
 
@@ -240,4 +247,70 @@ function startAutoSave() {
     }, 30000);
 }
 
-// ... (All other helper functions like saveData, manualSave, exportProject, exportWord, etc. remain the same)
+function triggerChange() {
+    hasChanges = true;
+    updateSaveStatus('有未保存的更改');
+}
+
+function manualSave() {
+    saveData(false);
+}
+
+function saveData(isAuto) {
+    if (!currentSheetName) return;
+
+    const config = masterConfig.sections[currentSectionName].forms[currentSheetName];
+    const formElement = document.getElementById('sheet-content');
+    let payload;
+
+    if (config.type === 'fixed_form') {
+        payload = {};
+        const formData = new FormData(formElement);
+        for (const [key, value] of formData.entries()) {
+            payload[key] = value;
+        }
+    } else if (config.type === 'dynamic_table') {
+        payload = [];
+        const rows = formElement.querySelectorAll('tbody tr');
+        const columns = config.columns.map(c => c.name);
+        rows.forEach(row => {
+            const rowData = {};
+            columns.forEach((colName, index) => {
+                const input = row.cells[index].querySelector('input, select, textarea');
+                if (input) {
+                    rowData[colName] = input.value;
+                }
+            });
+            payload.push(rowData);
+        });
+    }
+
+    if (isAuto) {
+        updateSaveStatus('自动保存中...');
+    } else {
+        updateSaveStatus('正在保存...');
+    }
+
+    fetch(`/api/projects/${projectId}/sheets/${currentSheetName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            hasChanges = false;
+            const now = new Date();
+            updateSaveStatus(`已于 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} 保存`);
+        } else {
+            updateSaveStatus(`保存失败: ${data.error || '未知错误'}`);
+        }
+    })
+    .catch(error => {
+        console.error('Save error:', error);
+        updateSaveStatus('保存出错，请检查网络');
+    });
+}
+
+// Expose manualSave for the button's onclick attribute
+window.manualSave = manualSave;

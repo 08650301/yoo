@@ -24,7 +24,8 @@ export function loadPreview() {
 // Function to handle real-time updates from form inputs to the preview pane
 function updatePreview(event) {
     const field = event.target;
-    const fieldName = field.dataset.fieldName;
+    // Use the 'name' attribute directly, which is more robust than dataset in some event delegation scenarios.
+    const fieldName = field.name;
     if (!fieldName) return;
 
     const previewContainer = document.getElementById('preview-content');
