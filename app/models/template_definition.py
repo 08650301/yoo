@@ -28,6 +28,8 @@ class Template(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('template.id'))  # 用于版本克隆溯源
     display_order = db.Column(db.Integer, nullable=False, default=0)
 
+    word_template_path = db.Column(db.String(512), nullable=True)  # 新增字段，存储Word模板路径
+
     # 关系定义: 一个模板有多个分区
     sections = relationship("Section", back_populates="template", cascade="all, delete-orphan",
                             order_by="Section.display_order")
