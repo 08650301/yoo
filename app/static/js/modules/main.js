@@ -339,7 +339,7 @@ function renderFixedForm(container, config, data) {
                 break;
             case 'select-multiple':
                 const selectedMulti = (value || '').split(',').map(v => v.trim());
-                fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')} multiple>`;
+                fieldHtml = `${labelHtml}<select name="${field.name}" id="field-${field.name}" class="form-select" multiple ${requiredAttr} ${readonlyAttr}>`;
                 (field.options || '').split(',').forEach(opt => {
                     const trimmedOpt = opt.trim();
                     const selectedAttr = selectedMulti.includes(trimmedOpt) ? 'selected' : '';
