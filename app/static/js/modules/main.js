@@ -374,9 +374,12 @@ function initializeCustomSelects() {
 
         const updateDisplay = () => {
             display.innerHTML = '';
-            selectedValues.forEach(value => {
-                if (!value) return;
-                const badge = document.createElement('span');
+            if (selectedValues.length === 0) {
+                display.innerHTML = '<span style="color: #6c757d;">--- 请选择 ---</span>';
+            } else {
+                selectedValues.forEach(value => {
+                    if (!value) return;
+                    const badge = document.createElement('span');
                 badge.className = 'select-option-badge';
                 badge.textContent = value;
                 const closeBtn = document.createElement('span');
@@ -388,7 +391,8 @@ function initializeCustomSelects() {
                 };
                 badge.appendChild(closeBtn);
                 display.appendChild(badge);
-            });
+                });
+            }
             let hiddenInput = selectWrapper.querySelector('input[type="hidden"]');
             if (!hiddenInput) {
                 hiddenInput = document.createElement('input');
