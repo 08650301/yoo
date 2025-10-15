@@ -272,6 +272,8 @@ function loadForm(sheetName, sectionName) {
         startAutoSave();
         // Immediately update the preview based on the initial data.
         updatePreviewOnLoad(data, config);
+        // Initialize any custom select multiple dropdowns
+        initializeCustomSelects();
     });
 }
 
@@ -338,14 +340,16 @@ function renderFixedForm(container, config, data) {
                 });
                 break;
             case 'select-multiple':
-                const selectedMulti = (value || '').split(',').map(v => v.trim());
-                fieldHtml = `${labelHtml}<select name="${field.name}" id="field-${field.name}" class="form-select" multiple ${requiredAttr} ${readonlyAttr}>`;
-                (field.options || '').split(',').forEach(opt => {
-                    const trimmedOpt = opt.trim();
-                    const selectedAttr = selectedMulti.includes(trimmedOpt) ? 'selected' : '';
-                    fieldHtml += `<option value="${trimmedOpt}" ${selectedAttr}>${trimmedOpt}</option>`;
-                });
-                fieldHtml += `</select>`;
+                fieldHtml = `${labelHtml}
+                    <div class="custom-select-multiple" id="custom-select-${field.name}" data-initial-value="${value}">
+                        <div class="select-display" tabindex="0"></div>
+                        <div class="select-options">
+                            ${(field.options || '').split(',').map(opt => {
+                                const trimmedOpt = opt.trim();
+                                return `<div class="select-option" data-value="${trimmedOpt}">${trimmedOpt}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
                 break;
             default: // text, number, date, etc.
                 fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" value="${value}" ${commonAttrs}>`;
@@ -359,6 +363,79 @@ function renderFixedForm(container, config, data) {
 
 function renderDynamicTable(container, config, data) {
     // ... (This function remains exactly the same)
+}
+
+function initializeCustomSelects() {
+    document.querySelectorAll('.custom-select-multiple').forEach(selectWrapper => {
+        const display = selectWrapper.querySelector('.select-display');
+        const optionsContainer = selectWrapper.querySelector('.select-options');
+        const initialValue = selectWrapper.dataset.initialValue || '';
+        let selectedValues = initialValue ? initialValue.split(',') : [];
+
+        const updateDisplay = () => {
+            display.innerHTML = '';
+            selectedValues.forEach(value => {
+                if (!value) return;
+                const badge = document.createElement('span');
+                badge.className = 'select-option-badge';
+                badge.textContent = value;
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'badge-close-btn';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleSelection(value);
+                };
+                badge.appendChild(closeBtn);
+                display.appendChild(badge);
+            });
+            let hiddenInput = selectWrapper.querySelector('input[type="hidden"]');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = selectWrapper.id.replace('custom-select-', '');
+                selectWrapper.appendChild(hiddenInput);
+            }
+            hiddenInput.value = selectedValues.join(',');
+            triggerChange(); // Notify that form has changes
+        };
+
+        const toggleSelection = (value) => {
+            const option = optionsContainer.querySelector(`[data-value="${value}"]`);
+            if (selectedValues.includes(value)) {
+                selectedValues = selectedValues.filter(v => v !== value);
+                option.classList.remove('selected');
+            } else {
+                selectedValues.push(value);
+                option.classList.add('selected');
+            }
+            updateDisplay();
+        };
+
+        optionsContainer.querySelectorAll('.select-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSelection(option.dataset.value);
+            });
+        });
+
+        display.addEventListener('click', () => {
+            optionsContainer.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!selectWrapper.contains(e.target)) {
+                optionsContainer.classList.remove('show');
+            }
+        });
+
+        // Set initial state
+        updateDisplay();
+        selectedValues.forEach(value => {
+            const option = optionsContainer.querySelector(`[data-value="${value}"]`);
+            if (option) option.classList.add('selected');
+        });
+    });
 }
 
 function startAutoSave() {
@@ -395,10 +472,9 @@ function saveData(isAuto) {
                 const checkedBoxes = formElement.querySelectorAll(`input[name="${field.name}"]:checked`);
                 payload[field.name] = Array.from(checkedBoxes).map(cb => cb.value).join(',');
             } else if (field.type === 'select-multiple') {
-                const selectElement = formElement.querySelector(`select[name="${field.name}"]`);
-                if (selectElement) {
-                    const selectedOptions = Array.from(selectElement.selectedOptions).map(opt => opt.value);
-                    payload[field.name] = selectedOptions.join(',');
+                const hiddenInput = formElement.querySelector(`#custom-select-${field.name} input[type="hidden"]`);
+                if (hiddenInput) {
+                    payload[field.name] = hiddenInput.value;
                 }
             } else {
                 const el = formElement.querySelector(`[name="${field.name}"]`);
