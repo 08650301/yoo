@@ -33,6 +33,13 @@ window.onload = function() {
 
 // ... (The rest of the functions from project.js are below) ...
 
+function updateSaveStatus(text) {
+    const el = document.getElementById('save-status');
+    if (el) {
+        el.textContent = text;
+    }
+}
+
 // ConditionalLogicEngine class and other functions remain the same as in the original project.js
 class ConditionalLogicEngine {
     constructor(formId, rules, fields) {
@@ -119,8 +126,104 @@ function loadForm(sheetName, sectionName) {
     });
 }
 
+// Expose the loadForm function to the global scope for Playwright testing
+window.loadForm = loadForm;
+
 function renderFixedForm(container, config, data) {
-    // ... (This function remains exactly the same, with the data-field-name attributes)
+    config.fields.forEach(field => {
+        const formGroup = document.createElement('div');
+        formGroup.className = 'mb-3';
+        formGroup.setAttribute('data-field-name', field.name);
+
+        const label = document.createElement('label');
+        label.htmlFor = `field-${field.name}`;
+        label.className = 'form-label';
+        label.textContent = field.label;
+
+        if (field.validation_rules && field.validation_rules.some(r => r.rule_type === 'required')) {
+            const requiredSpan = document.createElement('span');
+            requiredSpan.className = 'required-indicator';
+            requiredSpan.textContent = '*';
+            label.appendChild(requiredSpan);
+        }
+        formGroup.appendChild(label);
+
+        let inputElement;
+        const value = (data && data[field.name]) ? data[field.name] : (field.default_value || '');
+
+        switch (field.type) {
+            case 'textarea':
+                inputElement = document.createElement('textarea');
+                inputElement.className = 'form-control';
+                inputElement.rows = 3;
+                inputElement.value = value;
+                break;
+            case 'select':
+                inputElement = document.createElement('select');
+                inputElement.className = 'form-select';
+                const options = field.options ? field.options.split(',') : [];
+                // Add a blank option for non-required fields
+                if (!field.validation_rules || !field.validation_rules.some(r => r.rule_type === 'required')) {
+                    const blankOpt = document.createElement('option');
+                    blankOpt.value = '';
+                    blankOpt.textContent = '--- 请选择 ---';
+                    inputElement.appendChild(blankOpt);
+                }
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.trim();
+                    option.textContent = opt.trim();
+                    if (opt.trim() === value) {
+                        option.selected = true;
+                    }
+                    inputElement.appendChild(option);
+                });
+                break;
+            case 'radio':
+                inputElement = document.createElement('div');
+                const radioOptions = field.options ? field.options.split(',') : [];
+                radioOptions.forEach(opt => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'form-check';
+                    const radioInput = document.createElement('input');
+                    radioInput.type = 'radio';
+                    radioInput.className = 'form-check-input';
+                    radioInput.name = field.name;
+                    radioInput.value = opt.trim();
+                    radioInput.id = `field-${field.name}-${opt.trim().replace(/\s+/g, '-')}`;
+                    if (opt.trim() === value) {
+                        radioInput.checked = true;
+                    }
+                    const radioLabel = document.createElement('label');
+                    radioLabel.className = 'form-check-label';
+                    radioLabel.htmlFor = radioInput.id;
+                    radioLabel.textContent = opt.trim();
+                    wrapper.appendChild(radioInput);
+                    wrapper.appendChild(radioLabel);
+                    inputElement.appendChild(wrapper);
+                });
+                break;
+            default: // text, number, date, etc.
+                inputElement = document.createElement('input');
+                inputElement.type = field.type;
+                inputElement.className = 'form-control';
+                inputElement.value = value;
+                break;
+        }
+
+        if (inputElement.tagName !== 'DIV') {
+            inputElement.id = `field-${field.name}`;
+            inputElement.name = field.name;
+        }
+        formGroup.appendChild(inputElement);
+
+        const helpTip = document.createElement('div');
+        helpTip.className = 'form-text';
+        helpTip.textContent = field.help_tip || '';
+        formGroup.appendChild(helpTip);
+
+        container.appendChild(formGroup);
+    });
 }
 
 function renderDynamicTable(container, config, data) {
