@@ -272,6 +272,8 @@ function loadForm(sheetName, sectionName) {
         startAutoSave();
         // Immediately update the preview based on the initial data.
         updatePreviewOnLoad(data, config);
+        // Initialize any custom select multiple dropdowns
+        initializeCustomSelects();
     });
 }
 
@@ -302,7 +304,7 @@ function renderFixedForm(container, config, data) {
             case 'textarea':
                 fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
-            case 'select':
+            case 'select': // This is now 'select-single'
                 fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')}>`;
                 fieldHtml += `<option value="">--- 请选择 ---</option>`;
                 (field.options || '').split(',').forEach(opt => {
@@ -323,6 +325,32 @@ function renderFixedForm(container, config, data) {
                         </div>`;
                 });
                 break;
+            case 'checkbox-group':
+                fieldHtml = `<div>${labelHtml}</div>`;
+                const selectedValues = (value || '').split(',').map(v => v.trim());
+                (field.options || '').split(',').forEach((opt, index) => {
+                    const trimmedOpt = opt.trim();
+                    const checkId = `field-${field.name}-${index}`;
+                    const checkedAttr = selectedValues.includes(trimmedOpt) ? 'checked' : '';
+                    fieldHtml += `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${trimmedOpt}" ${checkedAttr} ${readonlyAttr}>
+                            <label class="form-check-label" for="${checkId}">${trimmedOpt}</label>
+                        </div>`;
+                });
+                break;
+            case 'select-multiple':
+                fieldHtml = `${labelHtml}
+                    <div class="custom-select-multiple" id="custom-select-${field.name}" data-initial-value="${value}">
+                        <div class="select-display" tabindex="0"></div>
+                        <div class="select-options">
+                            ${(field.options || '').split(',').map(opt => {
+                                const trimmedOpt = opt.trim();
+                                return `<div class="select-option" data-value="${trimmedOpt}">${trimmedOpt}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+                break;
             default: // text, number, date, etc.
                 fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" value="${value}" ${commonAttrs}>`;
                 break;
@@ -335,6 +363,79 @@ function renderFixedForm(container, config, data) {
 
 function renderDynamicTable(container, config, data) {
     // ... (This function remains exactly the same)
+}
+
+function initializeCustomSelects() {
+    document.querySelectorAll('.custom-select-multiple').forEach(selectWrapper => {
+        const display = selectWrapper.querySelector('.select-display');
+        const optionsContainer = selectWrapper.querySelector('.select-options');
+        const initialValue = selectWrapper.dataset.initialValue || '';
+        let selectedValues = initialValue ? initialValue.split(',') : [];
+
+        const updateDisplay = () => {
+            display.innerHTML = '';
+            selectedValues.forEach(value => {
+                if (!value) return;
+                const badge = document.createElement('span');
+                badge.className = 'select-option-badge';
+                badge.textContent = value;
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'badge-close-btn';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleSelection(value);
+                };
+                badge.appendChild(closeBtn);
+                display.appendChild(badge);
+            });
+            let hiddenInput = selectWrapper.querySelector('input[type="hidden"]');
+            if (!hiddenInput) {
+                hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = selectWrapper.id.replace('custom-select-', '');
+                selectWrapper.appendChild(hiddenInput);
+            }
+            hiddenInput.value = selectedValues.join(',');
+            triggerChange(); // Notify that form has changes
+        };
+
+        const toggleSelection = (value) => {
+            const option = optionsContainer.querySelector(`[data-value="${value}"]`);
+            if (selectedValues.includes(value)) {
+                selectedValues = selectedValues.filter(v => v !== value);
+                option.classList.remove('selected');
+            } else {
+                selectedValues.push(value);
+                option.classList.add('selected');
+            }
+            updateDisplay();
+        };
+
+        optionsContainer.querySelectorAll('.select-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSelection(option.dataset.value);
+            });
+        });
+
+        display.addEventListener('click', () => {
+            optionsContainer.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!selectWrapper.contains(e.target)) {
+                optionsContainer.classList.remove('show');
+            }
+        });
+
+        // Set initial state
+        updateDisplay();
+        selectedValues.forEach(value => {
+            const option = optionsContainer.querySelector(`[data-value="${value}"]`);
+            if (option) option.classList.add('selected');
+        });
+    });
 }
 
 function startAutoSave() {
@@ -365,10 +466,28 @@ function saveData(isAuto) {
 
     if (config.type === 'fixed_form') {
         payload = {};
-        const formData = new FormData(formElement);
-        for (const [key, value] of formData.entries()) {
-            payload[key] = value;
-        }
+        // Manually build payload to handle new field types
+        config.fields.forEach(field => {
+            if (field.type === 'checkbox-group') {
+                const checkedBoxes = formElement.querySelectorAll(`input[name="${field.name}"]:checked`);
+                payload[field.name] = Array.from(checkedBoxes).map(cb => cb.value).join(',');
+            } else if (field.type === 'select-multiple') {
+                const hiddenInput = formElement.querySelector(`#custom-select-${field.name} input[type="hidden"]`);
+                if (hiddenInput) {
+                    payload[field.name] = hiddenInput.value;
+                }
+            } else {
+                const el = formElement.querySelector(`[name="${field.name}"]`);
+                if (el) {
+                    if (el.type === 'radio') {
+                        const checkedRadio = formElement.querySelector(`[name="${field.name}"]:checked`);
+                        payload[field.name] = checkedRadio ? checkedRadio.value : '';
+                    } else {
+                        payload[field.name] = el.value;
+                    }
+                }
+            }
+        });
     } else if (config.type === 'dynamic_table') {
         payload = [];
         const rows = formElement.querySelectorAll('tbody tr');

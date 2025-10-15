@@ -24,7 +24,16 @@ try {
 
 let fieldModal = null, ruleModal = null;
 let conditionalRules = [];
-const fieldTypeMap = { text: '单行文本', textarea: '多行文本', number: '数字', date: '日期', select: '下拉选择', radio: '单选按钮', checkbox: '复选框' };
+const fieldTypeMap = {
+    text: '单行文本',
+    textarea: '多行文本',
+    number: '数字',
+    date: '日期',
+    select: '下拉单选',
+    radio: '单选按钮',
+    'checkbox-group': '多选按钮',
+    'select-multiple': '下拉多选'
+};
 
 // --- Tab 和按钮管理 ---
 function updateActionButtons(activeTab) {
@@ -111,7 +120,7 @@ function autoGenerateName() {
 
 function updateModalUI() {
     const fieldType = document.getElementById('fieldType').value;
-    document.getElementById('optionsGroup').classList.toggle('d-none', !['select', 'radio', 'checkbox'].includes(fieldType));
+    document.getElementById('optionsGroup').classList.toggle('d-none', !['select', 'radio', 'checkbox-group', 'select-multiple'].includes(fieldType));
     const defaultSingle = document.getElementById('fieldDefaultSingle');
     const defaultMulti = document.getElementById('fieldDefaultMulti');
     defaultSingle.classList.toggle('d-none', fieldType === 'textarea');
@@ -120,7 +129,7 @@ function updateModalUI() {
     else if (fieldType !== 'textarea' && !defaultMulti.classList.contains('d-none')) { defaultSingle.value = defaultMulti.value; }
     document.querySelector('.validation-group.text-rules').style.display = ['text', 'textarea'].includes(fieldType) ? 'block' : 'none';
     document.querySelector('.validation-group.numeric-rules').style.display = fieldType === 'number' ? 'block' : 'none';
-    
+
     // 设置基础校验规则（必填和只读不是互斥关系，可以独立设置）
     setupValidationRules();
 }
@@ -131,10 +140,10 @@ function setupValidationRules() {
     const disabledCheckbox = document.getElementById('validationDisabled');
     const allowEnglishSpaceCheckbox = document.getElementById('validationAllowEnglishSpace');
     const allowChineseSpaceCheckbox = document.getElementById('validationAllowChineseSpace');
-    
+
     // 必填和只读不是互斥关系，可以独立设置
     // 移除了之前的互斥事件监听器绑定
-    
+
     // 英文空格和中文空格不是互斥选项，可以同时选择
     // 移除了互斥的事件监听器绑定
 }
@@ -185,13 +194,13 @@ function openFieldModal(fieldData = null) {
                 else if (['contains', 'excludes'].includes(r.rule_type)) el.value = (r.rule_value || '').replace(/,/g, '\n');
                 else el.value = r.rule_value || '';
             }
-            
+
             // 处理新的空格验证规则
             if (r.rule_type === 'allowEnglishSpace') {
                 const allowEnglishSpaceEl = document.getElementById('validationAllowEnglishSpace');
                 if (allowEnglishSpaceEl) allowEnglishSpaceEl.checked = (r.rule_value === 'True');
             }
-            
+
             if (r.rule_type === 'allowChineseSpace') {
                 const allowChineseSpaceEl = document.getElementById('validationAllowChineseSpace');
                 if (allowChineseSpaceEl) allowChineseSpaceEl.checked = (r.rule_value === 'True');
@@ -221,22 +230,22 @@ function saveField() {
             validation[key] = value;
         }
     });
-    
+
     // 处理新的空格验证规则
     const allowEnglishSpaceEl = document.getElementById('validationAllowEnglishSpace');
     const allowChineseSpaceEl = document.getElementById('validationAllowChineseSpace');
-    
+
     if (allowEnglishSpaceEl && allowEnglishSpaceEl.checked) {
         validation['allowEnglishSpace'] = 'True';
     }
-    
+
     if (allowChineseSpaceEl && allowChineseSpaceEl.checked) {
         validation['allowChineseSpace'] = 'True';
     }
     const fieldType = document.getElementById('fieldType').value;
     const fieldName = document.getElementById('fieldName').value.trim();
     const fieldLabel = document.getElementById('fieldLabel').value.trim();
-    
+
     // 检查字段名称是否已存在（仅对新字段或修改名称的情况）
     if (!fieldId || fieldName !== currentFieldName) {
         const existingField = allFields.find(f => f.name === fieldName);
@@ -245,7 +254,7 @@ function saveField() {
             return;
         }
     }
-    
+
     const payload = {
         label: fieldLabel,
         name: fieldName,
@@ -453,4 +462,3 @@ function initializeSortable() {
         },
     });
 }
-

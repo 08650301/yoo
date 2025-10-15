@@ -561,12 +561,10 @@ def update_field(field_id):
         field = FieldDefinition.query.get_or_404(field_id)
         data = request.json
 
-        # 如果修改了内部名称，检查是否已存在
-        if 'name' in data and data['name'] != field.name:
-            existing_field = FieldDefinition.query.filter_by(sheet_id=field.sheet_id, name=data['name']).first()
-            if existing_field:
-                return jsonify({"error": f"字段内部名称 '{data['name']}' 已存在"}), 400
-            field.name = data['name']
+        # The 'name' attribute is now immutable and cannot be changed after creation.
+        # The following block has been removed:
+        # if 'name' in data and data['name'] != field.name:
+        #     ...
 
         field.label = data.get('label', field.label)
         field.field_type = data.get('field_type', field.field_type)

@@ -10,7 +10,7 @@
                         <div class="col-md-6 mb-3"><label for="fieldLabel" class="form-label">显示名称 (Label)</label><input type="text" class="form-control" id="fieldLabel" oninput="autoGenerateName()"></div>
                         <div class="col-md-6 mb-3"><label for="fieldName" class="form-label">内部名称 (Name)</label><input type="text" class="form-control-plaintext" id="fieldName" readonly></div>
                     </div>
-                    <div class="mb-3"><label for="fieldType" class="form-label">字段类型</label><select id="fieldType" class="form-select" onchange="updateModalUI()"><option value="text">单行文本</option><option value="textarea">多行文本</option><option value="number">数字</option><option value="date">日期</option><option value="select">下拉选择</option><option value="radio">单选按钮</option><option value="checkbox">复选框</option></select></div>
+                    <div class="mb-3"><label for="fieldType" class="form-label">字段类型</label><select id="fieldType" class="form-select" onchange="updateModalUI()"><option value="text">单行文本</option><option value="textarea">多行文本</option><option value="number">数字</option><option value="date">日期</option><option value="select">下拉单选</option><option value="select-multiple">下拉多选</option><option value="radio">单选按钮</option><option value="checkbox-group">多选按钮</option></select></div>
                     <div class="mb-3 d-none" id="optionsGroup"><label for="fieldOptions" class="form-label">选项 (每行一个)</label><textarea id="fieldOptions" class="form-control" rows="3"></textarea></div>
                     <div class="mb-3">
                         <label for="fieldDefaultSingle" class="form-label">默认值 (可选)</label>
