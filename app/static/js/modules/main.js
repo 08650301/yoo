@@ -222,6 +222,21 @@ function renderFixedForm(container, config, data) {
                 radio.dataset.fieldName = field.name;
             });
         }
+
+        // Apply validation rules as attributes
+        if (field.validation_rules) {
+            field.validation_rules.forEach(rule => {
+                if (rule.rule_type === 'required') {
+                    if (inputElement.tagName !== 'DIV') inputElement.required = true;
+                } else if (rule.rule_type === 'readonly' && (rule.rule_value === 'true' || rule.rule_value === True)) {
+                    if (inputElement.tagName !== 'DIV') inputElement.readOnly = true;
+                } else if (inputElement.tagName !== 'DIV') {
+                    // For other rules like min, max, pattern, etc.
+                    inputElement.setAttribute(rule.rule_type, rule.rule_value);
+                }
+            });
+        }
+
         formGroup.appendChild(inputElement);
 
         const helpTip = document.createElement('div');
