@@ -111,7 +111,7 @@ function autoGenerateName() {
 
 function updateModalUI() {
     const fieldType = document.getElementById('fieldType').value;
-    document.getElementById('optionsGroup').classList.toggle('d-none', !['select', 'radio', 'checkbox'].includes(fieldType));
+    document.getElementById('optionsGroup').classList.toggle('d-none', !['select', 'radio', 'checkbox-group', 'select-multiple'].includes(fieldType));
     const defaultSingle = document.getElementById('fieldDefaultSingle');
     const defaultMulti = document.getElementById('fieldDefaultMulti');
     defaultSingle.classList.toggle('d-none', fieldType === 'textarea');
