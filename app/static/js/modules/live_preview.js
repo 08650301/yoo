@@ -36,10 +36,14 @@ function updatePlaceholder(fieldName, value) {
     if (placeholders.length === 0) return;
 
     placeholders.forEach(span => {
+        // First, escape HTML to prevent XSS, then replace newlines with <br>
+        const escapedValue = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const finalHtml = escapedValue.replace(/\n/g, '<br>');
+
         if (value) {
-            span.textContent = value;
+            span.innerHTML = finalHtml;
         } else {
-            span.textContent = '**********';
+            span.innerHTML = '**********';
         }
         span.style.color = 'red';
     });

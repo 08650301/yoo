@@ -311,6 +311,15 @@ function renderFixedForm(container, config, data) {
                 });
                 fieldHtml += `</select>`;
                 break;
+            case 'checkbox':
+                const checkedAttr = value === 'True' || value === true ? 'checked' : '';
+                // For checkboxes, the label is typically placed after the input.
+                fieldHtml = `
+                    <div class="form-check">
+                        <input name="${field.name}" id="field-${field.name}" type="checkbox" class="form-check-input" ${checkedAttr} ${readonlyAttr}>
+                        <label class="form-check-label" for="field-${field.name}">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>
+                    </div>`;
+                break;
             case 'radio':
                 fieldHtml = `<div>${labelHtml}</div>`;
                 (field.options || '').split(',').forEach((opt, index) => {
@@ -365,10 +374,20 @@ function saveData(isAuto) {
 
     if (config.type === 'fixed_form') {
         payload = {};
-        const formData = new FormData(formElement);
-        for (const [key, value] of formData.entries()) {
-            payload[key] = value;
-        }
+        // Manually build payload to handle unchecked checkboxes correctly
+        config.fields.forEach(field => {
+            const el = formElement.querySelector(`[name="${field.name}"]`);
+            if (el) {
+                if (el.type === 'checkbox') {
+                    payload[field.name] = el.checked ? 'True' : 'False';
+                } else if (el.type === 'radio') {
+                    const checkedRadio = formElement.querySelector(`[name="${field.name}"]:checked`);
+                    payload[field.name] = checkedRadio ? checkedRadio.value : '';
+                } else {
+                    payload[field.name] = el.value;
+                }
+            }
+        });
     } else if (config.type === 'dynamic_table') {
         payload = [];
         const rows = formElement.querySelectorAll('tbody tr');
