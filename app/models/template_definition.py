@@ -33,6 +33,9 @@ class Template(db.Model):
     # 关系定义: 一个模板有多个分区
     sections = relationship("Section", back_populates="template", cascade="all, delete-orphan",
                             order_by="Section.display_order")
+    # 新增关系：一个模板有多个章节文档
+    chapters = relationship("WordTemplateChapter", back_populates="template", cascade="all, delete-orphan",
+                            order_by="WordTemplateChapter.display_order")
     parent = relationship("Template", remote_side=[id])
 
 
@@ -49,6 +52,22 @@ class Section(db.Model):
                           order_by="SheetDefinition.display_order")
 
 
+class WordTemplateChapter(db.Model):
+    """章节Word模板表，存储每个章节的.docx文件信息"""
+    __tablename__ = 'word_template_chapter'
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('template.id', ondelete='CASCADE'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(512), nullable=False)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # 关系定义: 一个章节模板属于一个主模板
+    template = relationship("Template", back_populates="chapters")
+    # 关系定义: 一个章节模板可以被一个Sheet关联 (一对一)
+    sheet_definition = relationship("SheetDefinition", back_populates="word_template_chapter", uselist=False)
+
+
 class SheetDefinition(db.Model):
     """Sheet 定义表，代表一个具体的表单或表格"""
     id = db.Column(db.Integer, primary_key=True)
@@ -58,11 +77,16 @@ class SheetDefinition(db.Model):
     display_order = db.Column(db.Integer, nullable=False, default=0)
     model_identifier = db.Column(db.String(100), nullable=True)  # 动态表格关联的模型标识
 
+    # 新增外键: 关联到章节Word模板
+    word_template_chapter_id = db.Column(db.Integer, db.ForeignKey('word_template_chapter.id'), unique=True, nullable=True)
+
     # 关系定义
     section = relationship("Section", back_populates="sheets")
     fields = relationship("FieldDefinition", back_populates="sheet", cascade="all, delete-orphan",
                           order_by="FieldDefinition.display_order")
     conditional_rules = relationship("ConditionalRule", back_populates="sheet", cascade="all, delete-orphan")
+    # 新增关系: 关联到章节Word模板
+    word_template_chapter = relationship("WordTemplateChapter", back_populates="sheet_definition")
 
 
 class FieldDefinition(db.Model):

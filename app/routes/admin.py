@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from app.models import (
     Template, Section, SheetDefinition, FieldDefinition, ValidationRule, ConditionalRule,
-    DYNAMIC_TABLE_MODELS
+    WordTemplateChapter, DYNAMIC_TABLE_MODELS
 )
 
 # 这个蓝图处理所有与后台管理界面相关的路由
@@ -599,6 +599,119 @@ def reorder_fields(sheet_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
+
+
+# ==============================================================================
+# 后台管理API - 章节Word模板
+# ==============================================================================
+CHAPTER_UPLOAD_FOLDER = 'uploads/word_template_chapters'
+
+@admin_bp.route('/api/templates/<int:template_id>/chapters', methods=['POST'])
+def upload_chapter_template(template_id):
+    if 'file' not in request.files:
+        return jsonify({"error": "没有找到文件部分"}), 400
+    file = request.files['file']
+    if file.filename == '' or not allowed_file(file.filename):
+        return jsonify({"error": "没有选择文件或文件类型不正确"}), 400
+
+    template = Template.query.get_or_404(template_id)
+    filename = secure_filename(file.filename)
+
+    upload_path = os.path.join(os.getcwd(), CHAPTER_UPLOAD_FOLDER, str(template.id))
+    os.makedirs(upload_path, exist_ok=True)
+    filepath = os.path.join(upload_path, filename)
+
+    file.save(filepath)
+
+    max_order = db.session.query(db.func.max(WordTemplateChapter.display_order)).filter_by(template_id=template_id).scalar() or -1
+
+    new_chapter = WordTemplateChapter(
+        template_id=template_id,
+        filename=filename,
+        filepath=filepath,
+        display_order=max_order + 1
+    )
+    db.session.add(new_chapter)
+    db.session.commit()
+
+    return jsonify({
+        "message": "章节模板上传成功",
+        "chapter": {
+            "id": new_chapter.id,
+            "filename": new_chapter.filename,
+            "display_order": new_chapter.display_order
+        }
+    }), 201
+
+@admin_bp.route('/api/chapters/<int:chapter_id>', methods=['DELETE'])
+def delete_chapter_template(chapter_id):
+    chapter = WordTemplateChapter.query.get_or_404(chapter_id)
+
+    # 在删除数据库记录前，先删除物理文件
+    if os.path.exists(chapter.filepath):
+        os.remove(chapter.filepath)
+
+    db.session.delete(chapter)
+    db.session.commit()
+
+    return jsonify({"message": "章节模板已删除"})
+
+@admin_bp.route('/api/templates/<int:template_id>/chapters', methods=['GET'])
+def get_chapter_templates(template_id):
+    # 使用 JOIN 直接查询出每个章节的关联状态
+    results = db.session.query(
+        WordTemplateChapter,
+        SheetDefinition.id.label('linked_sheet_id')
+    ).outerjoin(SheetDefinition, WordTemplateChapter.id == SheetDefinition.word_template_chapter_id)\
+     .filter(WordTemplateChapter.template_id == template_id)\
+     .order_by(WordTemplateChapter.display_order)\
+     .all()
+
+    return jsonify([{
+        "id": chapter.id,
+        "filename": chapter.filename,
+        "display_order": chapter.display_order,
+        "is_linked": linked_sheet_id is not None,
+        "linked_sheet_id": linked_sheet_id
+    } for chapter, linked_sheet_id in results])
+
+@admin_bp.route('/api/chapters/reorder', methods=['POST'])
+def reorder_chapters():
+    data = request.json
+    chapter_ids = data.get('order', [])
+    for index, chapter_id in enumerate(chapter_ids):
+        chapter = WordTemplateChapter.query.get(chapter_id)
+        if chapter:
+            chapter.display_order = index
+    db.session.commit()
+    return jsonify({"message": "章节模板顺序更新成功"})
+
+@admin_bp.route('/api/sheets/<int:sheet_id>/link_chapter', methods=['POST'])
+def link_sheet_to_chapter(sheet_id):
+    sheet = SheetDefinition.query.get_or_404(sheet_id)
+    data = request.json
+    chapter_id = data.get('chapter_id')
+
+    # 如果传入 chapter_id 为 None 或 0，则视为取消关联
+    if not chapter_id:
+        sheet.word_template_chapter_id = None
+        db.session.commit()
+        return jsonify({"message": "已取消文档关联"})
+
+    # 检查目标章节是否存在且属于同一个大模板
+    chapter = WordTemplateChapter.query.get_or_404(chapter_id)
+    if chapter.template_id != sheet.section.template_id:
+        return jsonify({"error": "无法关联一个不属于此模板的章节文档"}), 400
+
+    # 检查目标章节是否已经被其他 sheet 关联
+    existing_link = SheetDefinition.query.filter_by(word_template_chapter_id=chapter_id).first()
+    if existing_link and existing_link.id != sheet_id:
+        return jsonify({"error": f"此章节文档已被 '{existing_link.name}' 关联，请先解除原有关系"}), 400
+
+    sheet.word_template_chapter_id = chapter_id
+    db.session.commit()
+
+    return jsonify({"message": "文档关联成功", "chapter_id": chapter_id})
 
 
 # ==============================================================================

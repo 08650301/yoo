@@ -124,27 +124,20 @@ function deleteAPI(url, itemName, noReload = false) {
                 fetch(url, { method: 'DELETE' })
                 .then(handleApiResponse)
                 .then(data => {
-                    if (data.message) {
-                        Swal.fire(
-                            '已删除!',
-                            data.message,
-                            'success'
-                        ).then(() => {
-                            if (!noReload) {
-                                window.location.reload();
-                            }
-                            resolve(data);
-                        });
-                    }
+                    Swal.fire('已删除!', data.message, 'success').then(() => {
+                        if (!noReload) {
+                            window.location.reload();
+                        }
+                        resolve(data); // 在 SweetAlert 关闭后 resolve Promise
+                    });
                 })
                 .catch(error => {
                     Swal.fire('删除失败', error.message, 'error');
-                    console.error('删除失败:', error);
                     reject(error);
                 });
             } else {
                 // 用户点击了取消，静默地 reject Promise
-                reject('删除操作已取消');
+                reject(new Error('删除操作已取消'));
             }
         });
     });
