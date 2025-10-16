@@ -30,7 +30,6 @@ from .template_definition import (
     FieldDefinition,
     ValidationRule,
     ConditionalRule,
-    WordTemplateChapter,
     DYNAMIC_TABLE_MODELS
 )
 
@@ -46,5 +45,5 @@ __all__ = [
     'ShareAllocationPrinciple', 'EffectiveSupplierPrinciple', 'MultiShareAllocationPrinciple',
     # from template_definition
     'Template', 'Section', 'SheetDefinition', 'FieldDefinition',
-    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter', 'DYNAMIC_TABLE_MODELS'
+    'ValidationRule', 'ConditionalRule', 'DYNAMIC_TABLE_MODELS'
 ]

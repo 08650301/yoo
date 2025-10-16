@@ -32,7 +32,6 @@ def get_config_from_db(procurement_method):
         for sheet in sheets_query:
             section_config["order"].append(sheet.name)
             sheet_config = {
-                "id": sheet.id, # 新增：返回sheet的ID
                 "type": sheet.sheet_type,
                 "model_identifier": sheet.model_identifier
             }
@@ -288,26 +287,18 @@ def get_word_preview(project_id):
     except Exception as e:
         return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
 
-@api_bp.route('/sheets/<int:sheet_id>/preview', methods=['GET'])
-def get_sheet_preview(sheet_id):
-    """获取单个Sheet关联章节的HTML预览"""
-    try:
-        html = word_processor.generate_single_chapter_preview_html(sheet_id)
-        return jsonify({"html": html})
-    except Exception as e:
-        return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
-
 @api_bp.route('/projects/<int:project_id>/export_word', methods=['GET'])
 def export_word_document(project_id):
     try:
         project = Project.query.get_or_404(project_id)
         template = Template.query.filter_by(name=project.procurement_method, is_latest=True).first()
 
-        if not template:
-            return jsonify({"error": "未找到有效的模板"}), 404
+        if not template or not template.word_template_path:
+            return jsonify({"error": "未找到或未关联有效的Word模板文件"}), 404
 
-        # 新的导出函数不再需要 template_config
-        file_stream = word_processor.generate_word_document(project, template, None)
+        template_config = get_config_from_db(project.procurement_method)
+
+        file_stream = word_processor.generate_word_document(project, template, template_config)
 
         safe_project_name = "".join([c for c in project.name if c.isalnum() or c in (' ', '-')]).rstrip()
         filename = f"{safe_project_name}_导出.docx"

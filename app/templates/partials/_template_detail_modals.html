@@ -12,30 +12,6 @@
     </div>
 </div>
 
-<!-- 关联章节文档的弹窗 -->
-<div class="modal fade" id="linkChapterModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">为 <span id="linkChapterSheetName" class="fw-bold"></span> 关联章节文档</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="linkChapterSheetId">
-                <label for="chapterSelect" class="form-label">选择一个可用的章节文档:</label>
-                <select id="chapterSelect" class="form-select">
-                    <!-- Options will be populated by JavaScript -->
-                </select>
-                <div class="form-text">只有尚未被其他Sheet关联的文档才会显示在此处。</div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                <button type="button" class="btn btn-primary" onclick="saveChapterLink()">保存关联</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- 编辑分区名称的弹窗 -->
 <div class="modal fade" id="editSectionModal" tabindex="-1">
     <div class="modal-dialog">
