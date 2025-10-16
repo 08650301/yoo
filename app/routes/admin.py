@@ -472,12 +472,20 @@ def delete_sheet(sheet_id):
         return jsonify({"error": str(e)}), 500
 
 
+FIELD_TYPES_REQUIRING_OPTIONS = ['select', 'select-multiple', 'radio', 'checkbox-group']
+
 @admin_bp.route('/api/sheets/<int:sheet_id>/fields', methods=['POST'])
 def create_field(sheet_id):
     try:
         data = request.json
-        if not data.get('label', '').strip() or not data.get('name', '').strip() or not data.get('field_type'):
+        field_type = data.get('field_type')
+        options = data.get('options')
+
+        if not data.get('label', '').strip() or not data.get('name', '').strip() or not field_type:
             return jsonify({"error": "标签、内部名称和字段类型均为必填项"}), 400
+
+        if field_type in FIELD_TYPES_REQUIRING_OPTIONS and not (options and options.strip()):
+            return jsonify({"error": "对于此字段类型，选项内容不能为空"}), 400
 
         # 检查字段名称是否已存在
         existing_field = FieldDefinition.query.filter_by(sheet_id=sheet_id, name=data['name']).first()
@@ -525,6 +533,11 @@ def update_field(field_id):
     try:
         field = FieldDefinition.query.get_or_404(field_id)
         data = request.json
+        field_type = data.get('field_type', field.field_type) # Use new value if provided, else old
+        options = data.get('options')
+
+        if field_type in FIELD_TYPES_REQUIRING_OPTIONS and not (options and options.strip()):
+            return jsonify({"error": "对于此字段类型，选项内容不能为空"}), 400
 
         # The 'name' attribute is now immutable and cannot be changed after creation.
         # The following block has been removed:
@@ -532,8 +545,8 @@ def update_field(field_id):
         #     ...
 
         field.label = data.get('label', field.label)
-        field.field_type = data.get('field_type', field.field_type)
-        field.options = data.get('options')
+        field.field_type = field_type
+        field.options = options
         field.default_value = data.get('default_value')
         field.help_tip = data.get('help_tip')
 

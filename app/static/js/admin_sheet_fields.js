@@ -120,18 +120,43 @@ function autoGenerateName() {
 
 function updateModalUI() {
     const fieldType = document.getElementById('fieldType').value;
-    document.getElementById('optionsGroup').classList.toggle('d-none', !['select', 'radio', 'checkbox-group', 'select-multiple'].includes(fieldType));
+    const optionsGroup = document.getElementById('optionsGroup');
+    const optionsLabel = optionsGroup.querySelector('label');
+    const textRules = document.querySelector('.validation-group.text-rules');
+    const numericRules = document.querySelector('.validation-group.numeric-rules');
+
+    const needsOptions = ['select', 'radio', 'checkbox-group', 'select-multiple'].includes(fieldType);
+    const isTextual = ['text', 'textarea'].includes(fieldType);
+
+    // 1. 控制“选项”区域的可见性和必填提示
+    optionsGroup.classList.toggle('d-none', !needsOptions);
+    if (optionsLabel.querySelector('.required-indicator')) {
+        optionsLabel.querySelector('.required-indicator').remove();
+    }
+    if (needsOptions) {
+        optionsLabel.insertAdjacentHTML('beforeend', '<span class="required-indicator text-danger">*</span>');
+    }
+
+    // 2. 控制默认值输入框的切换
     const defaultSingle = document.getElementById('fieldDefaultSingle');
     const defaultMulti = document.getElementById('fieldDefaultMulti');
     defaultSingle.classList.toggle('d-none', fieldType === 'textarea');
     defaultMulti.classList.toggle('d-none', fieldType !== 'textarea');
-    if (fieldType === 'textarea' && !defaultSingle.classList.contains('d-none')) { defaultMulti.value = defaultSingle.value; }
-    else if (fieldType !== 'textarea' && !defaultMulti.classList.contains('d-none')) { defaultSingle.value = defaultMulti.value; }
-    document.querySelector('.validation-group.text-rules').style.display = ['text', 'textarea'].includes(fieldType) ? 'block' : 'none';
-    document.querySelector('.validation-group.numeric-rules').style.display = fieldType === 'number' ? 'block' : 'none';
+    if (fieldType === 'textarea' && !defaultSingle.classList.contains('d-none')) {
+        defaultMulti.value = defaultSingle.value;
+    } else if (fieldType !== 'textarea' && !defaultMulti.classList.contains('d-none')) {
+        defaultSingle.value = defaultMulti.value;
+    }
 
-    // 设置基础校验规则（必填和只读不是互斥关系，可以独立设置）
-    setupValidationRules();
+    // 3. 控制不同校验规则组的可见性
+    if (textRules) textRules.style.display = isTextual ? 'block' : 'none';
+    if (numericRules) numericRules.style.display = fieldType === 'number' ? 'block' : 'none';
+
+    // 4. 控制特定文本校验规则（如空格）的可见性
+    const allowSpacesGroup = document.getElementById('allow-spaces-group');
+    if (allowSpacesGroup) {
+        allowSpacesGroup.style.display = isTextual ? 'block' : 'none';
+    }
 }
 
 // 设置基础校验规则（必填和只读不是互斥关系，可以独立设置）
