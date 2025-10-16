@@ -3,9 +3,34 @@
 const projectId = document.body.dataset.projectId;
 
 /**
- * 从服务器加载初始的Word模板HTML预览。
+ * 【新】加载并显示单个章节的预览。
+ * @param {number} sheetId - 要加载预览的Sheet的ID。
  */
-export function loadPreview() {
+export function loadChapterPreview(sheetId) {
+    const previewContainer = document.getElementById('preview-content');
+    if (!previewContainer) return;
+
+    if (!sheetId) {
+        previewContainer.innerHTML = '<p class="text-muted">选择一个章节以查看预览。</p>';
+        return;
+    }
+
+    previewContainer.innerHTML = '<p class="text-muted">正在加载预览...</p>';
+    fetch(`/api/sheets/${sheetId}/preview`)
+        .then(response => response.json())
+        .then(data => {
+            previewContainer.innerHTML = data.html || `<p class="text-danger">加载预览失败: ${data.error || '未知错误'}</p>`;
+        })
+        .catch(error => {
+            previewContainer.innerHTML = `<p class="text-danger">加载预览时发生网络错误: ${error}</p>`;
+        });
+}
+
+
+/**
+ * 【已重命名】从服务器加载整个项目的初始HTML预览（作为回退）。
+ */
+export function loadInitialProjectPreview() {
     const previewContainer = document.getElementById('preview-content');
     if (!previewContainer) return;
     previewContainer.innerHTML = '<p class="text-muted">正在加载预览...</p>';

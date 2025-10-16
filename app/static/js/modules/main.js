@@ -1,7 +1,7 @@
 // app/static/js/modules/main.js
 
 import { initializeSidebar } from './sidebar_handler.js';
-import { loadPreview, initializeLivePreview, updatePreviewOnLoad } from './live_preview.js';
+import { loadInitialProjectPreview, loadChapterPreview, initializeLivePreview, updatePreviewOnLoad } from './live_preview.js';
 
 const projectId = document.body.dataset.projectId;
 const procurementMethod = document.body.dataset.procurementMethod;
@@ -28,7 +28,8 @@ window.onload = function() {
         });
 
     loadProcurementMethods();
-    loadPreview();
+    // 页面加载时，依然加载旧的整体预览作为默认
+    loadInitialProjectPreview();
 };
 
 // ... (The rest of the functions from project.js are below) ...
@@ -250,6 +251,11 @@ function loadForm(sheetName, sectionName) {
     exportWordButton.disabled = false;
 
     const config = masterConfig.sections[sectionName].forms[sheetName];
+    const sheetId = config.id; // 从配置中获取Sheet ID
+
+    // 更新预览
+    loadChapterPreview(sheetId);
+
     document.getElementById('sheet-title').textContent = sheetName;
     const contentDiv = document.getElementById('sheet-content');
     contentDiv.innerHTML = '';

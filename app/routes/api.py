@@ -32,6 +32,7 @@ def get_config_from_db(procurement_method):
         for sheet in sheets_query:
             section_config["order"].append(sheet.name)
             sheet_config = {
+                "id": sheet.id, # 新增：返回sheet的ID
                 "type": sheet.sheet_type,
                 "model_identifier": sheet.model_identifier
             }
@@ -284,6 +285,15 @@ def get_word_preview(project_id):
         return jsonify({"html": html})
     except (ValueError, FileNotFoundError) as e:
         return jsonify({"html": f"<p class='text-danger'>错误: {e}</p>"})
+    except Exception as e:
+        return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
+
+@api_bp.route('/sheets/<int:sheet_id>/preview', methods=['GET'])
+def get_sheet_preview(sheet_id):
+    """获取单个Sheet关联章节的HTML预览"""
+    try:
+        html = word_processor.generate_single_chapter_preview_html(sheet_id)
+        return jsonify({"html": html})
     except Exception as e:
         return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
 

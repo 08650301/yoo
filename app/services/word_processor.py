@@ -68,8 +68,37 @@ def _replace_table_placeholder(doc, placeholder_text, table_data, column_config)
 
 # --- Public Service Functions ---
 
+def generate_single_chapter_preview_html(sheet_id):
+    """为单个Sheet生成其关联章节的HTML预览"""
+    sheet = SheetDefinition.query.get(sheet_id)
+    if not sheet or not sheet.word_template_chapter:
+        return "<p class='text-muted'>此章节未关联任何Word文档。</p>"
+
+    chapter_path = sheet.word_template_chapter.filepath
+    if not os.path.exists(chapter_path):
+        return f"<p class='text-danger'>错误: 章节 '{sheet.name}' 的模板文件不存在。</p>"
+
+    with open(chapter_path, "rb") as docx_file:
+        result = mammoth.convert_to_html(docx_file)
+        html = result.value.strip()
+
+        # 检查是否为空白文档
+        if not html:
+            return "<p class='text-muted'>[本章节内容为空]</p>"
+
+        def wrap_placeholder(match):
+            placeholder = match.group(1)
+            return f'<span data-placeholder-for="{placeholder}">{match.group(0)}</span>'
+
+        html = re.sub(r'\{\{([\w_]+)\}\}', wrap_placeholder, html)
+        return html
+
+
 def generate_preview_html(project):
-    """为指定项目生成所有关联章节的Word模板的HTML预览拼接"""
+    """
+    【已弃用】为指定项目生成所有关联章节的Word模板的HTML预览拼接。
+    此函数现在只作为初始加载时的一个回退。
+    """
     template = Template.query.filter_by(name=project.procurement_method, is_latest=True).first()
     if not template:
         raise ValueError("未找到已发布的模板")
@@ -147,11 +176,19 @@ def generate_word_document(project, template, template_config):
             master_doc.add_paragraph(f"警告：章节 '{sheet.name}' 的模板文件未找到，已跳过。")
             continue
 
+        # 检查文档是否为空白
+        doc_to_process = Document(chapter_path)
+        if not doc_to_process.paragraphs and not doc_to_process.tables:
+            master_doc.add_paragraph(f"提示：章节 '{sheet.name}' 的模板为空，已跳过。")
+            continue
+
         # 如果是第一个文档，我们直接在 composer 的主文档上操作
         # 如果是后续文档，则加载它并追加
         if i == 0:
+            # master_doc 已经加载了第一个模板，所以直接处理
             doc_to_process = master_doc
         else:
+            # 对于后续章节，需要重新加载以避免修改原始 composer 对象
             doc_to_process = Document(chapter_path)
 
         # 填充文本占位符
