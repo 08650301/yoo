@@ -20,13 +20,24 @@ def _replace_text_in_paragraph(paragraph, key, value):
                 text = inline[i].text.replace(key, str(value if value is not None else ''))
                 inline[i].text = text
 
-def _replace_placeholders_in_doc(doc, placeholders):
-    """替换文档中的所有文本占位符"""
+def _build_value_to_label_map(sheet_definition):
+    """为单个Sheet的所有选择类字段构建 value -> label 的映射"""
+    mapping = {}
+    for field in sheet_definition.fields:
+        if field.field_type in ['select', 'radio', 'checkbox-group', 'select-multiple'] and field.options:
+            field_map = {opt['value']: opt['label'] for opt in field.options}
+            mapping[field.name] = field_map
+    return mapping
+
+def _replace_placeholders_in_doc(doc, placeholders, value_to_label_maps):
+    """替换文档中的所有文本占位符，并处理值到标签的映射"""
     for p in doc.paragraphs:
         for key, value in placeholders.items():
-            # 确保不是表格占位符
             if not key.startswith('{{table_'):
-                 _replace_text_in_paragraph(p, key, value)
+                field_name = key.strip('{}')
+                # 如果有映射，则转换值；否则直接使用原始值
+                display_value = value_to_label_maps.get(field_name, {}).get(value, value)
+                _replace_text_in_paragraph(p, key, display_value)
 
     for table in doc.tables:
         for row in table.rows:
@@ -34,7 +45,9 @@ def _replace_placeholders_in_doc(doc, placeholders):
                 for p in cell.paragraphs:
                     for key, value in placeholders.items():
                         if not key.startswith('{{table_'):
-                            _replace_text_in_paragraph(p, key, value)
+                            field_name = key.strip('{}')
+                            display_value = value_to_label_maps.get(field_name, {}).get(value, value)
+                            _replace_text_in_paragraph(p, key, display_value)
 
 def _replace_table_placeholder(doc, placeholder_text, table_data, column_config):
     """查找并替换表格占位符"""
@@ -143,6 +156,18 @@ def generate_word_document(project, template, template_config):
     for item in fixed_data:
         placeholders[f"{{{{{item.field_name}}}}}"] = item.field_value
 
+    # 构建所有固定表单字段的 value -> label 映射
+    all_fixed_fields = FieldDefinition.query.join(SheetDefinition).join(Section).filter(
+        Section.template_id == template.id,
+        SheetDefinition.sheet_type == 'fixed_form'
+    ).all()
+
+    value_to_label_maps = {}
+    for field in all_fixed_fields:
+        if field.field_type in ['select', 'radio', 'checkbox-group', 'select-multiple'] and field.options:
+            value_to_label_maps[field.name] = {opt['value']: opt['label'] for opt in field.options}
+
+
     # 2. 按正确顺序找到所有关联了章节文档的Sheet
     sheets_with_chapters = db.session.query(SheetDefinition).join(Section).filter(
         Section.template_id == template.id,
@@ -192,7 +217,7 @@ def generate_word_document(project, template, template_config):
             doc_to_process = Document(chapter_path)
 
         # 填充文本占位符
-        _replace_placeholders_in_doc(doc_to_process, placeholders)
+        _replace_placeholders_in_doc(doc_to_process, placeholders, value_to_label_maps)
 
         # 填充表格占位符
         if sheet.sheet_type == "dynamic_table":

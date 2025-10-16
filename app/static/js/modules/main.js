@@ -8,6 +8,7 @@ const procurementMethod = document.body.dataset.procurementMethod;
 
 let masterConfig = {};
 let currentSheetName = '', currentSectionName = '';
+const FIELD_TYPES_REQUIRING_OPTIONS = ['select', 'select-multiple', 'radio', 'checkbox-group'];
 let periodicSaveTimer;
 let hasChanges = false;
 const saveStatusEl = document.getElementById('save-status');
@@ -275,9 +276,23 @@ function loadForm(sheetName, sectionName) {
         } else if (config.type === 'dynamic_table') {
             renderDynamicTable(contentDiv, config, data);
         }
-        startAutoSave();
+
+        // 构建 value -> label 映射表
+        const valueToLabelMaps = {};
+        if (config.fields) {
+            config.fields.forEach(field => {
+                if (FIELD_TYPES_REQUIRING_OPTIONS.includes(field.field_type) && Array.isArray(field.options)) {
+                    valueToLabelMaps[field.name] = field.options.reduce((acc, opt) => {
+                        acc[opt.value] = opt.label;
+                        return acc;
+                    }, {});
+                }
+            });
+        }
+
+        startAutoSave(valueToLabelMaps);
         // Immediately update the preview based on the initial data.
-        updatePreviewOnLoad(data, config);
+        updatePreviewOnLoad(data, config, valueToLabelMaps);
         // Initialize any custom select multiple dropdowns
         initializeCustomSelects();
     });
@@ -310,38 +325,35 @@ function renderFixedForm(container, config, data) {
             case 'textarea':
                 fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
-            case 'select': // This is now 'select-single'
+            case 'select':
                 fieldHtml = `${labelHtml}<select ${commonAttrs.replace('form-control', 'form-select')}>`;
                 fieldHtml += `<option value="">--- 请选择 ---</option>`;
-                (field.options || '').split(',').forEach(opt => {
-                    const trimmedOpt = opt.trim();
-                    fieldHtml += `<option value="${trimmedOpt}" ${value === trimmedOpt ? 'selected' : ''}>${trimmedOpt}</option>`;
+                (field.options || []).forEach(opt => {
+                    fieldHtml += `<option value="${opt.value}" ${value === opt.value ? 'selected' : ''}>${opt.label}</option>`;
                 });
                 fieldHtml += `</select>`;
                 break;
             case 'radio':
                 fieldHtml = `<div>${labelHtml}</div>`;
-                (field.options || '').split(',').forEach((opt, index) => {
-                    const trimmedOpt = opt.trim();
+                (field.options || []).forEach((opt, index) => {
                     const radioId = `field-${field.name}-${index}`;
                     fieldHtml += `
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${trimmedOpt}" ${value === trimmedOpt ? 'checked' : ''} ${requiredAttr} ${readonlyAttr}>
-                            <label class="form-check-label" for="${radioId}">${trimmedOpt}</label>
+                            <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${opt.value}" ${value === opt.value ? 'checked' : ''} ${requiredAttr} ${readonlyAttr}>
+                            <label class="form-check-label" for="${radioId}">${opt.label}</label>
                         </div>`;
                 });
                 break;
             case 'checkbox-group':
                 fieldHtml = `<div>${labelHtml}</div>`;
                 const selectedValues = (value || '').split(',').map(v => v.trim());
-                (field.options || '').split(',').forEach((opt, index) => {
-                    const trimmedOpt = opt.trim();
+                (field.options || []).forEach((opt, index) => {
                     const checkId = `field-${field.name}-${index}`;
-                    const checkedAttr = selectedValues.includes(trimmedOpt) ? 'checked' : '';
+                    const checkedAttr = selectedValues.includes(opt.value) ? 'checked' : '';
                     fieldHtml += `
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${trimmedOpt}" ${checkedAttr} ${readonlyAttr}>
-                            <label class="form-check-label" for="${checkId}">${trimmedOpt}</label>
+                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${opt.value}" ${checkedAttr} ${readonlyAttr}>
+                            <label class="form-check-label" for="${checkId}">${opt.label}</label>
                         </div>`;
                 });
                 break;
@@ -350,9 +362,8 @@ function renderFixedForm(container, config, data) {
                     <div class="custom-select-multiple" id="custom-select-${field.name}" data-initial-value="${value}">
                         <div class="select-display" tabindex="0"></div>
                         <div class="select-options">
-                            ${(field.options || '').split(',').map(opt => {
-                                const trimmedOpt = opt.trim();
-                                return `<div class="select-option" data-value="${trimmedOpt}">${trimmedOpt}</div>`;
+                            ${(field.options || []).map(opt => {
+                                return `<div class="select-option" data-value="${opt.value}">${opt.label}</div>`;
                             }).join('')}
                         </div>
                     </div>`;
@@ -379,6 +390,12 @@ function initializeCustomSelects() {
         // Ensure that if initialValue is an empty string, selectedValues becomes an empty array
         let selectedValues = (initialValue && initialValue !== '') ? initialValue.split(',') : [];
 
+        const options = Array.from(optionsContainer.querySelectorAll('.select-option')).map(opt => ({
+            value: opt.dataset.value,
+            label: opt.textContent
+        }));
+        const valueToLabelMap = options.reduce((acc, opt) => ({ ...acc, [opt.value]: opt.label }), {});
+
         const updateDisplay = () => {
             display.innerHTML = '';
             if (selectedValues.length === 0) {
@@ -386,9 +403,10 @@ function initializeCustomSelects() {
             } else {
                 selectedValues.forEach(value => {
                     if (!value) return;
+                    const label = valueToLabelMap[value] || value; // Fallback to value if label not found
                     const badge = document.createElement('span');
                 badge.className = 'select-option-badge';
-                badge.textContent = value;
+                badge.textContent = label;
                 const closeBtn = document.createElement('span');
                 closeBtn.className = 'badge-close-btn';
                 closeBtn.innerHTML = '&times;';
@@ -449,9 +467,9 @@ function initializeCustomSelects() {
     });
 }
 
-function startAutoSave() {
+function startAutoSave(valueToLabelMaps) {
     document.getElementById('sheet-content').addEventListener('input', triggerChange);
-    initializeLivePreview(); // Call this here to attach listeners to the newly rendered form
+    initializeLivePreview(valueToLabelMaps); // Call this here to attach listeners to the newly rendered form
     periodicSaveTimer = setInterval(() => {
         if (hasChanges) {
             saveData(true);

@@ -96,7 +96,7 @@ class FieldDefinition(db.Model):
     name = db.Column(db.String(100), nullable=False)  # 内部名称
     label = db.Column(db.String(200), nullable=False)  # 显示名称
     field_type = db.Column(db.String(50), nullable=False)
-    options = db.Column(db.Text)  # 用于下拉、单选、复选的选项，逗号分隔
+    options = db.Column(db.JSON) # 用于存储选项的JSON数组，例如: [{"label": "是", "value": "1"}]
     default_value = db.Column(db.String(255))
     help_tip = db.Column(db.Text)
     display_order = db.Column(db.Integer, nullable=False, default=0)

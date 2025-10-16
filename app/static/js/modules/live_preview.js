@@ -53,19 +53,33 @@ export function loadInitialProjectPreview() {
  * @param {string} fieldName - 字段的内部名称。
  * @param {string} value - 字段的当前值。
  */
-function updatePlaceholder(fieldName, value) {
+function updatePlaceholder(fieldName, value, valueToLabelMaps) {
     const previewContainer = document.getElementById('preview-content');
     if (!previewContainer) return;
+
+    let displayValue = value;
+    // 如果有映射表，则尝试转换值
+    if (valueToLabelMaps && valueToLabelMaps[fieldName]) {
+        const map = valueToLabelMaps[fieldName];
+        // 处理多选情况（值是逗号分隔的字符串）
+        if (typeof value === 'string' && value.includes(',')) {
+            displayValue = value.split(',').map(v => map[v.trim()] || v.trim()).join(', ');
+        } else {
+            // 处理单选或普通情况
+            displayValue = map[value] || value;
+        }
+    }
 
     const placeholders = previewContainer.querySelectorAll(`[data-placeholder-for="${fieldName}"]`);
     if (placeholders.length === 0) return;
 
     placeholders.forEach(span => {
+        const valueToDisplay = displayValue || value; // Fallback to original value if displayValue is empty
         // First, escape HTML to prevent XSS, then replace newlines with <br>
-        const escapedValue = value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const escapedValue = String(valueToDisplay).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         const finalHtml = escapedValue.replace(/\n/g, '<br>');
 
-        if (value) {
+        if (valueToDisplay) {
             span.innerHTML = finalHtml;
         } else {
             span.innerHTML = '**********';
@@ -79,17 +93,20 @@ function updatePlaceholder(fieldName, value) {
  * 【新函数】在表单加载时，根据后端数据直接更新所有预览。
  * @param {object} data - 从 /api/projects/.../sheets/ GET 请求获取的表单数据。
  * @param {object} config - 当前表单的配置对象。
+ * @param {object} valueToLabelMaps - 值到标签的映射表。
  */
-export function updatePreviewOnLoad(data, config) {
+export function updatePreviewOnLoad(data, config, valueToLabelMaps) {
     if (!config || !config.fields) return;
 
     config.fields.forEach(field => {
         const fieldName = field.name;
         const value = (data && data[fieldName]) ? data[fieldName] : (field.default_value || '');
-        updatePlaceholder(fieldName, value);
+        updatePlaceholder(fieldName, value, valueToLabelMaps);
     });
 }
 
+
+let valueMapsForLiveUpdate = {}; // 模块级变量，用于存储映射
 
 /**
  * 处理实时输入事件，更新单个字段的预览。
@@ -100,24 +117,37 @@ function handleLiveUpdate(event) {
     if (!field) return;
 
     const fieldName = field.name;
-    let value = field.value;
+    let value;
 
     if (field.type === 'checkbox') {
-        value = field.checked ? '是' : '否';
-    } else if (field.type === 'radio') {
-        const checkedRadio = document.querySelector(`[name="${fieldName}"]:checked`);
-        value = checkedRadio ? checkedRadio.value : '';
+        // 对于 checkbox-group，收集所有选中的值
+        const checkedBoxes = document.querySelectorAll(`input[name="${fieldName}"]:checked`);
+        value = Array.from(checkedBoxes).map(cb => cb.value).join(',');
+    } else if (field.closest('.custom-select-multiple')) {
+        // 对于自定义的 select-multiple，从其隐藏输入中获取值
+        const wrapper = field.closest('.custom-select-multiple');
+        const hiddenInput = wrapper.querySelector('input[type="hidden"]');
+        value = hiddenInput ? hiddenInput.value : '';
+    } else {
+        // 对于所有其他标准输入 (text, textarea, select, radio)
+        value = field.value;
     }
 
-    updatePlaceholder(fieldName, value);
+    updatePlaceholder(fieldName, value, valueMapsForLiveUpdate);
 }
 
 /**
  * 为表单容器内的所有输入元素初始化实时监听。
+ * @param {object} valueToLabelMaps - 从 main.js 传入的映射表。
  */
-export function initializeLivePreview() {
+export function initializeLivePreview(valueToLabelMaps) {
+    valueMapsForLiveUpdate = valueToLabelMaps || {};
     const formContainer = document.getElementById('sheet-content');
     if (!formContainer) return;
+
+    // 移除旧的监听器，以防重复绑定
+    formContainer.removeEventListener('input', handleLiveUpdate);
+    formContainer.removeEventListener('change', handleLiveUpdate);
 
     formContainer.addEventListener('input', handleLiveUpdate);
     formContainer.addEventListener('change', handleLiveUpdate);
