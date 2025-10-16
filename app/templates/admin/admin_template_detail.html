@@ -41,28 +41,6 @@
         <div class="alert alert-info">提示：您可以拖动分区卡片或每个分区内的Sheet行来调整它们的显示顺序。</div>
         {% endif %}
 
-        <!-- Word Template Upload Section -->
-        <div class="card section-card">
-            <div class="card-header">
-                <h5 class="mb-0">Word模板管理</h5>
-            </div>
-            <div class="card-body">
-                {% if template.word_template_path %}
-                    <p>当前已关联模板: <strong class="text-success">{{ template.word_template_path.split('/')[-1] }}</strong></p>
-                {% else %}
-                    <p class="text-muted">当前未关联任何Word模板。</p>
-                {% endif %}
-                {% if not readonly %}
-                <form id="upload-word-template-form">
-                    <div class="input-group">
-                        <input type="file" class="form-control" id="word_template_file" name="word_template" accept=".docx">
-                        <button class="btn btn-primary" type="submit">上传并关联</button>
-                    </div>
-                    <div class="form-text">请上传 `.docx` 格式的模板文件。上传新文件将会覆盖旧文件。</div>
-                </form>
-                {% endif %}
-            </div>
-        </div>
 
         <div id="sections-container">
             {% for section in sections %}
@@ -82,34 +60,52 @@
                     </div>
                     {% endif %}
                 </div>
-                <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
-                    {% if section.sheets %}
-                        {% for sheet in section.sheets %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
-                            <div class="d-flex align-items-center">
-                                <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-                                </span>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
+                        {% if section.sheets %}
+                            {% for sheet in section.sheets %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+                                    </span>
+                                    <div>
+                                        <span class="fw-bold">{{ sheet.name }}</span>
+                                        <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
+                                        {% if sheet.model_identifier %}
+                                            <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
                                 <div>
-                                    <span class="fw-bold">{{ sheet.name }}</span>
-                                    <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
-                                    {% if sheet.model_identifier %}
-                                        <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
+                                    <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
+                                    {% if not readonly %}
+                                    <button class="btn btn-outline-primary btn-sm ms-2"
+                                            onclick="openLinkChapterModal({{ section.id }}, {{ sheet.id }}, '{{ sheet.name }}', {{ sheet.word_template_chapter_id or 'null' }})">
+                                        关联文档
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
                                     {% endif %}
                                 </div>
-                            </div>
-                            <div>
-                                <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
-                                {% if not readonly %}
-                                <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
-                                {% endif %}
-                            </div>
-                        </li>
-                        {% endfor %}
-                    {% else %}
-                        <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <h6 class="card-subtitle mb-2 text-muted">本分区章节Word文档</h6>
+                    {% if not readonly %}
+                    <div class="mb-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('chapter-file-input-{{ section.id }}').click();">+ 上传章节文档</button>
+                        <input type="file" id="chapter-file-input-{{ section.id }}" class="d-none" accept=".docx" onchange="uploadChapterFile({{ section.id }}, this.files[0])">
+                    </div>
                     {% endif %}
-                </ul>
+                    <ul id="chapters-list-{{ section.id }}" class="list-group chapters-list-group" data-section-id="{{ section.id }}">
+                        <li class="list-group-item text-muted placeholder-item">正在加载...</li>
+                    </ul>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -128,44 +124,5 @@
     <script src="/static/js/admin_api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script src="/static/js/template_detail.js"></script>
-    <script>
-        document.getElementById('upload-word-template-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const fileInput = document.getElementById('word_template_file');
-            const file = fileInput.files[0];
-            if (!file) {
-                Swal.fire('错误', '请选择一个文件', 'error');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('word_template', file);
-
-            const templateId = document.body.dataset.templateId;
-            const uploadUrl = `/admin/api/templates/${templateId}/upload_word_template`;
-
-            fetch(uploadUrl, {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message) {
-                    Swal.fire({
-                        title: '成功',
-                        text: data.message,
-                        icon: 'success'
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                } else {
-                    Swal.fire('上传失败', data.error || '未知错误', 'error');
-                }
-            })
-            .catch(error => {
-                Swal.fire('上传失败', `请求错误: ${error}`, 'error');
-            });
-        });
-    </script>
 </body>
 </html>

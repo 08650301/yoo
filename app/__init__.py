@@ -16,7 +16,7 @@ def create_app():
     """
     # 2. 创建 Flask app 实例
     # instance_relative_config=True 表示配置文件可以位于 instance 文件夹中，与应用代码分离
-    basedir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    basedir = os.getcwd() # 使用当前工作目录作为根目录
     app = Flask(__name__, instance_relative_config=True,
                 template_folder='templates', static_folder='static')
 
@@ -30,7 +30,8 @@ def create_app():
 
     # 4. 将扩展与创建的 app 实例关联起来
     db.init_app(app)
-    migrate.init_app(app, db)
+    # 明确指定迁移目录，以解决在某些环境中路径解析不正确的问题
+    migrate.init_app(app, db, directory=os.path.join(basedir, 'migrations'))
 
     # 5. 在应用上下文中执行后续操作
     with app.app_context():

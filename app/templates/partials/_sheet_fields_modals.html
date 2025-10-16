@@ -13,29 +13,10 @@
                     <div class="mb-3"><label for="fieldType" class="form-label">字段类型</label><select id="fieldType" class="form-select" onchange="updateModalUI()"><option value="text">单行文本</option><option value="textarea">多行文本</option><option value="number">数字</option><option value="date">日期</option><option value="select">下拉单选</option><option value="select-multiple">下拉多选</option><option value="radio">单选按钮</option><option value="checkbox-group">多选按钮</option></select></div>
                     <div class="mb-3 d-none" id="optionsGroup">
                         <div class="row">
-                            <div class="col-md-6">
-                                <label for="fieldOptionsLabel" class="form-label">选项显示值 (Label)</label>
-                                <textarea id="fieldOptionsLabel" class="form-control" rows="4" placeholder="例如：&#10;选项一&#10;选项二"></textarea>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="fieldOptionsValue" class="form-label">选项实际值 (Value)</label>
-                                <textarea id="fieldOptionsValue" class="form-control" rows="4" placeholder="例如：&#10;option1&#10;option2"></textarea>
-                            </div>
+                            <div class="col-md-6"><label for="fieldOptionLabels" class="form-label">选项 (显示值)</label><textarea id="fieldOptionLabels" class="form-control" rows="4"></textarea></div>
+                            <div class="col-md-6"><label for="fieldOptionValues" class="form-label">实际内容 (储存值)</label><textarea id="fieldOptionValues" class="form-control" rows="4"></textarea></div>
                         </div>
-                        <div class="form-text mb-3">填写左侧“显示值”后，将自动同步生成右侧的“实际值”。若“实际值”留空，则默认使用“显示值”作为“实际值”。</div>
-                        <hr class="my-3">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <label class="form-label d-block">Word导出格式</label>
-                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="wordExportFormat" id="wordExportAsLabel" value="label"><label class="form-check-label" for="wordExportAsLabel">导出显示值</label></div>
-                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="wordExportFormat" id="wordExportAsValue" value="value" checked><label class="form-check-label" for="wordExportAsValue">导出实际值</label></div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label d-block">Excel导出格式</label>
-                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="excelExportFormat" id="excelExportAsLabel" value="label" checked><label class="form-check-label" for="excelExportAsLabel">导出显示值</label></div>
-                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="excelExportFormat" id="excelExportAsValue" value="value"><label class="form-check-label" for="excelExportAsValue">导出实际值</label></div>
-                            </div>
-                        </div>
+                        <div class="form-text">左侧为用户看到的选项，右侧为存入数据库的实际值。请确保两边行数一致。</div>
                     </div>
                     <div class="mb-3">
                         <label for="fieldDefaultSingle" class="form-label">默认值 (可选)</label>
@@ -48,8 +29,10 @@
                     <div class="d-flex mb-3">
                         <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationRequired"><label class="form-check-label" for="validationRequired">必填</label></div>
                         <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationDisabled"><label class="form-check-label" for="validationDisabled">只读</label></div>
-                        <div class="form-check me-3"><input class="form-check-input" type="checkbox" id="validationAllowEnglishSpace"><label class="form-check-label" for="validationAllowEnglishSpace">允许英文空格</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="validationAllowChineseSpace"><label class="form-check-label" for="validationAllowChineseSpace">允许中文空格</label></div>
+                        <div id="allow-spaces-group">
+                            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="validationAllowEnglishSpace"><label class="form-check-label" for="validationAllowEnglishSpace">允许英文空格</label></div>
+                            <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" id="validationAllowChineseSpace"><label class="form-check-label" for="validationAllowChineseSpace">允许中文空格</label></div>
+                        </div>
                     </div>
                     <div class="validation-group text-rules">
                         <div class="mb-3"><label for="validationPattern" class="form-label">正则表达式</label><input type="text" class="form-control" id="validationPattern" placeholder="例如：^1[3-9]\d{9}$"></div>

@@ -28,8 +28,6 @@ class Template(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('template.id'))  # 用于版本克隆溯源
     display_order = db.Column(db.Integer, nullable=False, default=0)
 
-    word_template_path = db.Column(db.String(512), nullable=True)  # 新增字段，存储Word模板路径
-
     # 关系定义: 一个模板有多个分区
     sections = relationship("Section", back_populates="template", cascade="all, delete-orphan",
                             order_by="Section.display_order")
@@ -47,6 +45,25 @@ class Section(db.Model):
     template = relationship("Template", back_populates="sections")
     sheets = relationship("SheetDefinition", back_populates="section", cascade="all, delete-orphan",
                           order_by="SheetDefinition.display_order")
+    # 新增关系：一个分区有多个章节文档
+    chapters = relationship("WordTemplateChapter", back_populates="section", cascade="all, delete-orphan",
+                            order_by="WordTemplateChapter.display_order")
+
+
+class WordTemplateChapter(db.Model):
+    """章节Word模板表，存储每个章节的.docx文件信息"""
+    __tablename__ = 'word_template_chapter'
+    id = db.Column(db.Integer, primary_key=True)
+    section_id = db.Column(db.Integer, db.ForeignKey('section.id', ondelete='CASCADE'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    filepath = db.Column(db.String(512), nullable=False)
+    display_order = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # 关系定义: 一个章节模板属于一个分区
+    section = relationship("Section", back_populates="chapters")
+    # 关系定义: 一个章节模板可以被一个Sheet关联 (一对一)
+    sheet_definition = relationship("SheetDefinition", back_populates="word_template_chapter", uselist=False)
 
 
 class SheetDefinition(db.Model):
@@ -58,11 +75,16 @@ class SheetDefinition(db.Model):
     display_order = db.Column(db.Integer, nullable=False, default=0)
     model_identifier = db.Column(db.String(100), nullable=True)  # 动态表格关联的模型标识
 
+    # 新增外键: 关联到章节Word模板
+    word_template_chapter_id = db.Column(db.Integer, db.ForeignKey('word_template_chapter.id'), unique=True, nullable=True)
+
     # 关系定义
     section = relationship("Section", back_populates="sheets")
     fields = relationship("FieldDefinition", back_populates="sheet", cascade="all, delete-orphan",
                           order_by="FieldDefinition.display_order")
     conditional_rules = relationship("ConditionalRule", back_populates="sheet", cascade="all, delete-orphan")
+    # 新增关系: 关联到章节Word模板
+    word_template_chapter = relationship("WordTemplateChapter", back_populates="sheet_definition")
 
 
 class FieldDefinition(db.Model):
@@ -74,14 +96,10 @@ class FieldDefinition(db.Model):
     name = db.Column(db.String(100), nullable=False)  # 内部名称
     label = db.Column(db.String(200), nullable=False)  # 显示名称
     field_type = db.Column(db.String(50), nullable=False)
-    options = db.Column(db.Text)  # 用于下拉、单选、复选的选项，逗号分隔
+    options = db.Column(db.JSON) # 用于存储选项的JSON数组，例如: [{"label": "是", "value": "1"}]
     default_value = db.Column(db.String(255))
     help_tip = db.Column(db.Text)
     display_order = db.Column(db.Integer, nullable=False, default=0)
-
-    # 新增：导出格式配置
-    export_word_as_label = db.Column(db.Boolean, nullable=False, default=False) # 默认以实际内容导出Word
-    export_excel_as_label = db.Column(db.Boolean, nullable=False, default=True) # 默认以选项导出Excel
 
     sheet = relationship("SheetDefinition", back_populates="fields")
     validation_rules = relationship("ValidationRule", back_populates="field", cascade="all, delete-orphan")

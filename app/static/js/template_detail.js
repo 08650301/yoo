@@ -1,20 +1,24 @@
-// 从 <body> 标签的 data-* 属性中获取后端传递的数据
 const templateId = document.body.dataset.templateId;
 const isReadonly = document.body.dataset.readonly === 'true';
 
-// 初始化所有弹窗实例，以便后续通过 JavaScript 控制
 let newSheetModal = null;
 let editSectionModal = null;
 let newSectionModal = null;
+let linkChapterModal = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 页面加载完成后，如果不是只读模式，则初始化拖拽排序功能
     if (!isReadonly) {
         initializeSortable();
     }
+    // 为每个分区加载其章节文档列表
+    document.querySelectorAll('.chapters-list-group').forEach(list => {
+        const sectionId = list.dataset.sectionId;
+        loadChapters(sectionId);
+    });
 });
 
 function initializeSortable() {
+    // 分区排序
     const sectionsContainer = document.getElementById('sections-container');
     new Sortable(sectionsContainer, {
         handle: '.section-handle',
@@ -22,16 +26,11 @@ function initializeSortable() {
         ghostClass: 'sortable-ghost',
         onEnd: function (evt) {
             const order = Array.from(sectionsContainer.querySelectorAll('.section-card')).map(card => card.dataset.id);
-            fetch('/admin/api/sections/reorder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ order: order })
-            })
-            .then(handleApiResponse)
-            .then(data => { if (!data.message) { Swal.fire('错误', '分区顺序更新失败！', 'error'); } });
+            postAPI('/admin/api/sections/reorder', { order: order }, '分区顺序已更新', true);
         },
     });
 
+    // Sheet 排序
     document.querySelectorAll('.sheets-list').forEach(list => {
         new Sortable(list, {
             handle: '.sheet-handle',
@@ -40,19 +39,146 @@ function initializeSortable() {
             onEnd: function(evt) {
                 const sectionId = list.dataset.sectionId;
                 const order = Array.from(list.querySelectorAll('li[data-id]')).map(item => item.dataset.id);
-                fetch('/admin/api/sheets/reorder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ order: order, section_id: sectionId })
-                })
-                .then(handleApiResponse)
-                .then(data => { if (!data.message) { Swal.fire('错误', 'Sheet顺序更新失败！', 'error'); } });
+                postAPI('/admin/api/sheets/reorder', { order: order, section_id: sectionId }, 'Sheet顺序已更新', true);
+            }
+        });
+    });
+
+    // 为每个分区的章节列表启用排序
+    document.querySelectorAll('.chapters-list-group').forEach(list => {
+        new Sortable(list, {
+            handle: '.chapter-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function(evt) {
+                const order = Array.from(list.querySelectorAll('li[data-id]')).map(item => item.dataset.id);
+                postAPI('/admin/api/chapters/reorder', { order: order }, '章节文档顺序已更新', true);
             }
         });
     });
 }
 
-// --- 弹窗与表单操作函数 ---
+// --- 章节文档管理 (已重构为基于分区) ---
+
+function loadChapters(sectionId) {
+    const list = document.getElementById(`chapters-list-${sectionId}`);
+    if (!list) return;
+
+    fetch(`/admin/api/sections/${sectionId}/chapters`)
+    .then(handleApiResponse)
+    .then(chapters => {
+        list.innerHTML = '';
+        if (chapters.length === 0) {
+            list.innerHTML = '<li class="list-group-item text-muted placeholder-item">尚未上传任何章节文档。</li>';
+            return;
+        }
+        chapters.forEach(chapter => {
+            const item = document.createElement('li');
+            item.className = 'list-group-item list-group-item-sm d-flex justify-content-between align-items-center';
+            item.dataset.id = chapter.id;
+
+            const linkedBadge = chapter.is_linked ? `<span class="badge bg-success ms-2">已关联</span>` : '';
+
+            item.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <span class="chapter-handle me-2 ${isReadonly ? 'd-none' : ''}" style="cursor: grab;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+                    </span>
+                    <small>${chapter.filename}</small>
+                    ${linkedBadge}
+                </div>
+                ${!isReadonly ? `<button class="btn btn-outline-danger btn-sm py-0" onclick="deleteChapter(${sectionId}, ${chapter.id}, '${chapter.filename}')">删除</button>` : ''}
+            `;
+            list.appendChild(item);
+        });
+    })
+    .catch(error => {
+        list.innerHTML = `<li class="list-group-item text-danger">加载失败: ${error.message}</li>`;
+    });
+}
+
+function uploadChapterFile(sectionId, file) {
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    Swal.fire({
+        title: '正在上传...',
+        text: '请稍候',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    fetch(`/admin/api/sections/${sectionId}/chapters`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(handleApiResponse)
+    .then(data => {
+        Swal.fire('成功', data.message, 'success');
+        loadChapters(sectionId); // 重新加载该分区的列表
+    })
+    .catch(error => Swal.fire('上传失败', error.message, 'error'))
+    .finally(() => {
+        document.getElementById(`chapter-file-input-${sectionId}`).value = '';
+    });
+}
+
+function deleteChapter(sectionId, chapterId, filename) {
+    deleteAPI(`/admin/api/chapters/${chapterId}`, `章节文档 "${filename}"`, true)
+        .then(() => {
+            loadChapters(sectionId); // 成功删除后重新加载该分区的列表
+        })
+        .catch(error => {
+            if (error.message !== '删除操作已取消') {
+                console.error('删除章节时发生错误:', error);
+            }
+        });
+}
+
+async function openLinkChapterModal(sectionId, sheetId, sheetName, currentChapterId) {
+    if (!linkChapterModal) {
+        linkChapterModal = new bootstrap.Modal(document.getElementById('linkChapterModal'));
+    }
+
+    document.getElementById('linkChapterSheetName').textContent = sheetName;
+    document.getElementById('linkChapterSheetId').value = sheetId;
+
+    const select = document.getElementById('chapterSelect');
+    select.innerHTML = '<option>正在加载...</option>';
+    linkChapterModal.show();
+
+    try {
+        const response = await fetch(`/admin/api/sections/${sectionId}/chapters`);
+        const chapters = await handleApiResponse(response);
+
+        select.innerHTML = '<option value="">--- 无关联 ---</option>';
+
+        chapters.forEach(chapter => {
+            if (chapter.id === currentChapterId || !chapter.is_linked) {
+                const option = document.createElement('option');
+                option.value = chapter.id;
+                option.textContent = chapter.filename;
+                if (chapter.id === currentChapterId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+        });
+    } catch (error) {
+        select.innerHTML = `<option>加载失败: ${error.message}</option>`;
+    }
+}
+
+function saveChapterLink() {
+    const sheetId = document.getElementById('linkChapterSheetId').value;
+    const chapterId = document.getElementById('chapterSelect').value;
+
+    postAPI(`/admin/api/sheets/${sheetId}/link_chapter`, { chapter_id: chapterId }, '关联状态已更新！');
+}
+
+// --- 弹窗与表单操作函数 (既有函数) ---
 
 function openNewSectionModal() {
     if (!newSectionModal) {
