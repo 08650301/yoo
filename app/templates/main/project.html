@@ -117,6 +117,10 @@
         .select-option:hover { background-color: #f8f9fa; }
         .select-option.selected { background-color: #0d6efd; color: white; }
         .select-option.selected::before { content: '✓'; font-weight: bold; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); } /* Centered vertically */
+
+        /* Unify placeholder color for selects */
+        select.form-select:invalid { color: #6c757d; }
+        option { color: black; }
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">
