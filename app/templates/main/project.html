@@ -116,7 +116,7 @@
         .select-option { padding: 8px 12px 8px 30px; cursor: pointer; position: relative; } /* Added padding-left */
         .select-option:hover { background-color: #f8f9fa; }
         .select-option.selected { background-color: #0d6efd; color: white; }
-        .select-option.selected::before { content: '✓'; font-weight: bold; position: absolute; left: 10px; } /* Changed from ::after to ::before */
+        .select-option.selected::before { content: '✓'; font-weight: bold; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); } /* Centered vertically */
     </style>
 </head>
 <body data-project-id="{{ project.id }}" data-procurement-method="{{ project.procurement_method }}">

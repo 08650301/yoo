@@ -370,7 +370,8 @@ function initializeCustomSelects() {
         const display = selectWrapper.querySelector('.select-display');
         const optionsContainer = selectWrapper.querySelector('.select-options');
         const initialValue = selectWrapper.dataset.initialValue || '';
-        let selectedValues = initialValue ? initialValue.split(',') : [];
+        // Ensure that if initialValue is an empty string, selectedValues becomes an empty array
+        let selectedValues = (initialValue && initialValue !== '') ? initialValue.split(',') : [];
 
         const updateDisplay = () => {
             display.innerHTML = '';
