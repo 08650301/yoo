@@ -65,25 +65,6 @@
             </div>
         </div>
 
-        <!-- Chapter Word Template Management -->
-        <div class="card section-card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">章节Word文档管理</h5>
-                {% if not readonly %}
-                <button class="btn btn-primary" onclick="document.getElementById('chapter-file-input').click();">+ 上传章节文档</button>
-                <input type="file" id="chapter-file-input" class="d-none" accept=".docx">
-                {% endif %}
-            </div>
-            <div class="card-body">
-                 <div class="alert alert-info">在这里上传构成最终文档的各个章节模板。您可以拖拽列表项进行排序。</div>
-                <ul id="chapters-list" class="list-group">
-                    <!-- Chapter items will be dynamically inserted here by JavaScript -->
-                    <li class="list-group-item text-muted placeholder-item">尚未上传任何章节文档。</li>
-                </ul>
-            </div>
-        </div>
-
-
         <div id="sections-container">
             {% for section in sections %}
             <div class="card section-card" data-id="{{ section.id }}">
@@ -102,7 +83,55 @@
                     </div>
                     {% endif %}
                 </div>
-                <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
+                <div class="card-body">
+                    <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
+                        {% if section.sheets %}
+                            {% for sheet in section.sheets %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
+                                <div class="d-flex align-items-center">
+                                    <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+                                    </span>
+                                    <div>
+                                        <span class="fw-bold">{{ sheet.name }}</span>
+                                        <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
+                                        {% if sheet.model_identifier %}
+                                            <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div>
+                                    <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
+                                    {% if not readonly %}
+                                    <button class="btn btn-outline-primary btn-sm ms-2"
+                                            onclick="openLinkChapterModal({{ section.id }}, {{ sheet.id }}, '{{ sheet.name }}', {{ sheet.word_template_chapter_id or 'null' }})">
+                                        关联文档
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% endfor %}
+                        {% else %}
+                            <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <h6 class="card-subtitle mb-2 text-muted">本分区章节Word文档</h6>
+                    {% if not readonly %}
+                    <div class="mb-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('chapter-file-input-{{ section.id }}').click();">+ 上传章节文档</button>
+                        <input type="file" id="chapter-file-input-{{ section.id }}" class="d-none" accept=".docx" onchange="uploadChapterFile({{ section.id }}, this.files[0])">
+                    </div>
+                    {% endif %}
+                    <ul id="chapters-list-{{ section.id }}" class="list-group chapters-list-group" data-section-id="{{ section.id }}">
+                        <li class="list-group-item text-muted placeholder-item">正在加载...</li>
+                    </ul>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
                     {% if section.sheets %}
                         {% for sheet in section.sheets %}
                         <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">

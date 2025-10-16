@@ -4,6 +4,7 @@ import mammoth
 from docx import Document
 from io import BytesIO
 from docxcompose.composer import Composer
+from app import db
 from app.models import Project, Template, FixedFormData, DYNAMIC_TABLE_MODELS, Section, SheetDefinition, WordTemplateChapter
 
 # --- Private Helper Functions ---
@@ -73,13 +74,11 @@ def generate_preview_html(project):
     if not template:
         raise ValueError("未找到已发布的模板")
 
-    # 按顺序获取所有关联了章节文档的Sheet
-    sheets_with_chapters = SheetDefinition.query \
-        .join(Section) \
-        .filter(Section.template_id == template.id, SheetDefinition.word_template_chapter_id.isnot(None)) \
-        .join(WordTemplateChapter) \
-        .order_by(Section.display_order, SheetDefinition.display_order) \
-        .all()
+    # 新的查询逻辑：从 Template 开始，join Section 和 SheetDefinition
+    sheets_with_chapters = db.session.query(SheetDefinition).join(Section).filter(
+        Section.template_id == template.id,
+        SheetDefinition.word_template_chapter_id.isnot(None)
+    ).order_by(Section.display_order, SheetDefinition.display_order).all()
 
     if not sheets_with_chapters:
         return "<p class='text-danger'>此模板下没有任何Sheet关联了章节文档，无法生成预览。</p>"
@@ -116,12 +115,10 @@ def generate_word_document(project, template, template_config):
         placeholders[f"{{{{{item.field_name}}}}}"] = item.field_value
 
     # 2. 按正确顺序找到所有关联了章节文档的Sheet
-    sheets_with_chapters = SheetDefinition.query \
-        .join(Section) \
-        .filter(Section.template_id == template.id, SheetDefinition.word_template_chapter_id.isnot(None)) \
-        .join(WordTemplateChapter) \
-        .order_by(Section.display_order, SheetDefinition.display_order) \
-        .all()
+    sheets_with_chapters = db.session.query(SheetDefinition).join(Section).filter(
+        Section.template_id == template.id,
+        SheetDefinition.word_template_chapter_id.isnot(None)
+    ).order_by(Section.display_order, SheetDefinition.display_order).all()
 
     if not sheets_with_chapters:
         # 如果没有任何章节关联，创建一个提示错误的文档
