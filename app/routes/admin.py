@@ -105,48 +105,13 @@ def reorder_templates():
         return jsonify({"error": str(e)}), 500
 
 # ==============================================================================
-# 后台管理API - Word模板上传
+# 后台管理API - 辅助函数
 # ==============================================================================
-
-UPLOAD_FOLDER = 'uploads/word_templates'
 ALLOWED_EXTENSIONS = {'docx'}
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-@admin_bp.route('/api/templates/<int:template_id>/upload_word_template', methods=['POST'])
-def upload_word_template(template_id):
-    template = Template.query.get_or_404(template_id)
-    if 'word_template' not in request.files:
-        return jsonify({"error": "没有找到文件部分"}), 400
-    file = request.files['word_template']
-    if file.filename == '':
-        return jsonify({"error": "没有选择文件"}), 400
-    if file and allowed_file(file.filename):
-        filename = secure_filename(f"template_{template.id}_{template.name}_{file.filename}")
-
-        # 确保上传目录存在
-        upload_path = os.path.join(os.getcwd(), UPLOAD_FOLDER)
-        os.makedirs(upload_path, exist_ok=True)
-
-        filepath = os.path.join(upload_path, filename)
-
-        # 如果存在旧文件，先删除
-        if template.word_template_path and os.path.exists(template.word_template_path):
-            try:
-                os.remove(template.word_template_path)
-            except OSError as e:
-                # 如果文件删除失败，打印一个警告但继续执行
-                print(f"Warning: could not remove old file {template.word_template_path}: {e}")
-
-        file.save(filepath)
-        template.word_template_path = filepath
-        db.session.commit()
-        return jsonify({"message": "Word模板上传并关联成功", "filepath": filepath}), 200
-    else:
-        return jsonify({"error": "文件类型不允许，请上传.docx文件"}), 400
-
 
 @admin_bp.route('/api/sections/reorder', methods=['POST'])
 def reorder_sections():
