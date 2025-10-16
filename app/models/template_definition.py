@@ -101,6 +101,11 @@ class FieldDefinition(db.Model):
     help_tip = db.Column(db.Text)
     display_order = db.Column(db.Integer, nullable=False, default=0)
 
+    # 新增：用于控制选择类字段在导出时的行为
+    # True 表示导出选项的 'label'，False 表示导出 'value'
+    export_word_as_label = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+    export_excel_as_label = db.Column(db.Boolean, nullable=False, default=True, server_default='1')
+
     sheet = relationship("SheetDefinition", back_populates="fields")
     validation_rules = relationship("ValidationRule", back_populates="field", cascade="all, delete-orphan")
 

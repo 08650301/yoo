@@ -91,8 +91,14 @@ function renderFieldsTable() {
 
 // --- 字段弹窗与保存逻辑 ---
 function generateFieldNameFromLabel(str) {
+    // 移除非法字符，将汉字视为空格，然后转换为小写并用下划线连接
     const baseName = str.replace(/[\u4e00-\u9fa5]/g, ' ').toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
-    if (!baseName || baseName === 'field') {
+    // 正则表达式，用于检查字符串是否只包含数字
+    const isPurelyNumeric = /^\d+$/.test(baseName);
+
+    // 如果处理后的基础名称为空、为"field"或纯数字，则生成一个唯一的名称
+    // 这样做是为了确保内部名称的有效性和唯一性
+    if (!baseName || baseName === 'field' || isPurelyNumeric) {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000);
         return `field_${timestamp}_${random}`;
@@ -140,6 +146,12 @@ function updateModalUI() {
     const allowSpacesGroup = document.getElementById('allow-spaces-group');
     if (allowSpacesGroup) {
         allowSpacesGroup.style.display = isTextual ? 'block' : 'none';
+    }
+
+    // 新增：控制导出选项组的可见性
+    const exportOptionsGroup = document.getElementById('exportOptionsGroup');
+    if (exportOptionsGroup) {
+        exportOptionsGroup.classList.toggle('d-none', !needsOptions);
     }
 }
 
@@ -214,9 +226,18 @@ function openFieldModal(fieldData = null) {
                 else el.value = r.rule_value || '';
             }
         });
+
+        // 新增：根据字段数据设置导出选项
+        // 使用 document.querySelector 来精确查找 radio 按钮并设置其 checked 状态
+        document.querySelector(`input[name="exportWordAsLabel"][value="${fieldData.export_word_as_label}"]`).checked = true;
+        document.querySelector(`input[name="exportExcelAsLabel"][value="${fieldData.export_excel_as_label}"]`).checked = true;
+
     } else {
         document.getElementById('fieldModalTitle').textContent = "新增字段";
         document.getElementById('fieldId').value = '';
+        // 新增：为新字段重置为默认导出选项
+        document.querySelector('input[name="exportWordAsLabel"][value="false"]').checked = true;
+        document.querySelector('input[name="exportExcelAsLabel"][value="true"]').checked = true;
     }
 
     updateModalUI();
@@ -263,6 +284,10 @@ function saveField() {
     if (FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType)) {
         payload.option_labels = document.getElementById('fieldOptionLabels').value.trim().split('\n');
         payload.option_values = document.getElementById('fieldOptionValues').value.trim().split('\n');
+
+        // 新增：只有当字段是选择类时，才读取并添加导出配置
+        payload.export_word_as_label = document.querySelector('input[name="exportWordAsLabel"]:checked').value === 'true';
+        payload.export_excel_as_label = document.querySelector('input[name="exportExcelAsLabel"]:checked').value === 'true';
     }
 
     if (!payload.label || !payload.name) { Swal.fire('输入错误', '显示名称和内部名称不能为空！', 'warning'); return; }

@@ -72,6 +72,8 @@ def admin_sheet_fields(sheet_id):
             "default_value": field.default_value,
             "help_tip": field.help_tip,
             "display_order": field.display_order,
+            "export_word_as_label": field.export_word_as_label,
+            "export_excel_as_label": field.export_excel_as_label,
             "validation_rules": [{"rule_type": rule.rule_type, "rule_value": rule.rule_value} for rule in
                                  field.validation_rules]
         }
@@ -505,7 +507,10 @@ def create_field(sheet_id):
         new_field = FieldDefinition(
             sheet_id=sheet_id, name=data['name'], label=data['label'], field_type=data['field_type'],
             options=options_data, default_value=data.get('default_value'),
-            help_tip=data.get('help_tip'), display_order=new_order
+            help_tip=data.get('help_tip'), display_order=new_order,
+            # 新增：保存导出格式配置，对于非选择类字段，使用数据库的默认值
+            export_word_as_label=data.get('export_word_as_label', False),
+            export_excel_as_label=data.get('export_excel_as_label', True)
         )
         db.session.add(new_field)
         db.session.flush()
@@ -561,6 +566,13 @@ def update_field(field_id):
         field.options = options_data
         field.default_value = data.get('default_value')
         field.help_tip = data.get('help_tip')
+
+        # 新增：更新导出格式配置
+        # 如果前端没有传来这些值（例如对于非选择类字段），则保持其在数据库中的原样
+        if 'export_word_as_label' in data:
+            field.export_word_as_label = data.get('export_word_as_label')
+        if 'export_excel_as_label' in data:
+            field.export_excel_as_label = data.get('export_excel_as_label')
 
         ValidationRule.query.filter_by(field_id=field_id).delete()
         validation_data = data.get('validation', {})

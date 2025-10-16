@@ -18,6 +18,21 @@
                         </div>
                         <div class="form-text">左侧为用户看到的选项，右侧为存入数据库的实际值。请确保两边行数一致。</div>
                     </div>
+                    <div class="mb-3 d-none" id="exportOptionsGroup">
+                        <h6>导出格式配置</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Word导出格式</label>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="exportWordAsLabel" id="exportWordAsValue" value="false" checked><label class="form-check-label" for="exportWordAsValue">以实际内容导出 (Value)</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="exportWordAsLabel" id="exportWordAsLabel" value="true"><label class="form-check-label" for="exportWordAsLabel">以选项导出 (Label)</label></div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Excel导出格式</label>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="exportExcelAsLabel" id="exportExcelAsValue" value="false"><label class="form-check-label" for="exportExcelAsValue">以实际内容导出 (Value)</label></div>
+                                <div class="form-check"><input class="form-check-input" type="radio" name="exportExcelAsLabel" id="exportExcelAsLabel" value="true" checked><label class="form-check-label" for="exportExcelAsLabel">以选项导出 (Label)</label></div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <label for="fieldDefaultSingle" class="form-label">默认值 (可选)</label>
                         <input type="text" class="form-control" id="fieldDefaultSingle">
