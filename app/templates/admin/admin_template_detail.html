@@ -132,40 +132,6 @@
             </div>
             {% endfor %}
         </div>
-                    {% if section.sheets %}
-                        {% for sheet in section.sheets %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
-                            <div class="d-flex align-items-center">
-                                <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-                                </span>
-                                <div>
-                                    <span class="fw-bold">{{ sheet.name }}</span>
-                                    <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
-                                    {% if sheet.model_identifier %}
-                                        <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div>
-                                <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
-                                {% if not readonly %}
-                                <button class="btn btn-outline-primary btn-sm ms-2"
-                                        onclick="openLinkChapterModal({{ sheet.id }}, '{{ sheet.name }}', {{ sheet.word_template_chapter_id or 'null' }})">
-                                    关联文档
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
-                                {% endif %}
-                            </div>
-                        </li>
-                        {% endfor %}
-                    {% else %}
-                        <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
-                    {% endif %}
-                </ul>
-            </div>
-            {% endfor %}
-        </div>
 
         {% if not sections %}
             <div class="text-center p-5 border rounded bg-light">
