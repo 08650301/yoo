@@ -274,7 +274,15 @@ function loadForm(sheetName, sectionName) {
                 }, 100);
             }
         } else if (config.type === 'dynamic_table') {
-            renderDynamicTable(contentDiv, config, data);
+            // Display a placeholder for the upcoming feature
+            contentDiv.innerHTML = `
+                <div class="alert alert-info">
+                    <h4 class="alert-heading">功能开发中</h4>
+                    <p>您所选择的“动态表格”功能正在积极开发中，旨在未来提供一个可由您完全自定义列的、更灵活的表格系统。</p>
+                    <hr>
+                    <p class="mb-0">当前此部分无需填写或保存。</p>
+                </div>
+            `;
         }
 
         // 构建 value -> label 映射表
@@ -376,10 +384,6 @@ function renderFixedForm(container, config, data) {
         formGroup.innerHTML = fieldHtml;
         container.appendChild(formGroup);
     });
-}
-
-function renderDynamicTable(container, config, data) {
-    // ... (This function remains exactly the same)
 }
 
 function initializeCustomSelects() {
@@ -518,19 +522,12 @@ function saveData(isAuto) {
             }
         });
     } else if (config.type === 'dynamic_table') {
-        payload = [];
-        const rows = formElement.querySelectorAll('tbody tr');
-        const columns = config.columns.map(c => c.name);
-        rows.forEach(row => {
-            const rowData = {};
-            columns.forEach((colName, index) => {
-                const input = row.cells[index].querySelector('input, select, textarea');
-                if (input) {
-                    rowData[colName] = input.value;
-                }
-            });
-            payload.push(rowData);
-        });
+        // Functionality is not developed, so we do nothing.
+        // We can just update the status to pretend it was saved.
+        const now = new Date();
+        updateSaveStatus(`已于 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} 保存`);
+        hasChanges = false;
+        return; // Exit the function early
     }
 
     if (isAuto) {

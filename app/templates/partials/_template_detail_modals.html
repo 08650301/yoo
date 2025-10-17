@@ -61,19 +61,11 @@
                 <div class="mb-3"><label for="sheetName" class="form-label">新Sheet名称</label><input type="text" class="form-control" id="sheetName" required></div>
                 <div class="mb-3">
                     <label for="sheetType" class="form-label">Sheet模式</label>
-                    <select id="sheetType" class="form-select" required onchange="toggleModelIdentifier()">
+                    <select id="sheetType" class="form-select" required>
                         <option value="fixed_form" selected>固定表单</option>
                         <option value="dynamic_table">动态表格</option>
                     </select>
-                </div>
-                <div class="mb-3 d-none" id="modelIdentifierGroup">
-                    <label for="modelIdentifier" class="form-label">数据模型 (身份证)</label>
-                    <select id="modelIdentifier" class="form-select">
-                        <option value="" selected disabled>请为动态表格选择一个数据模型...</option>
-                        {% for model_key in dynamic_models %}
-                            <option value="{{ model_key }}">{{ model_key }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="form-text">“动态表格”功能正在开发中，选择此项将创建一个占位框架。</div>
                 </div>
             </div>
             <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button><button type="button" class="btn btn-primary" onclick="addSheet()">创建</button></div>

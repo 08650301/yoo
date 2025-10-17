@@ -5,23 +5,6 @@
 # Import models from project.py
 from .project import Project, FixedFormData
 
-# Import models from review_items.py
-from .review_items import (
-    KeyTechIndicator,
-    BizReviewItem,
-    TechReviewItem,
-    ServiceReviewItem,
-    PriceReviewItem,
-    DeductReviewItem
-)
-
-# Import models from allocation.py
-from .allocation import (
-    ShareAllocationPrinciple,
-    EffectiveSupplierPrinciple,
-    MultiShareAllocationPrinciple
-)
-
 # Import models from template_definition.py
 from .template_definition import (
     Template,
@@ -30,8 +13,7 @@ from .template_definition import (
     FieldDefinition,
     ValidationRule,
     ConditionalRule,
-    WordTemplateChapter,
-    DYNAMIC_TABLE_MODELS
+    WordTemplateChapter
 )
 
 # It's a good practice to define __all__ to specify what gets imported
@@ -39,12 +21,7 @@ from .template_definition import (
 __all__ = [
     # from project
     'Project', 'FixedFormData',
-    # from review_items
-    'KeyTechIndicator', 'BizReviewItem', 'TechReviewItem', 'ServiceReviewItem',
-    'PriceReviewItem', 'DeductReviewItem',
-    # from allocation
-    'ShareAllocationPrinciple', 'EffectiveSupplierPrinciple', 'MultiShareAllocationPrinciple',
     # from template_definition
     'Template', 'Section', 'SheetDefinition', 'FieldDefinition',
-    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter', 'DYNAMIC_TABLE_MODELS'
+    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter'
 ]

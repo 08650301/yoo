@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request, send_file
 from app import db
 from app.models import (
     Project, Template, Section, SheetDefinition, FieldDefinition, ConditionalRule,
-    FixedFormData, DYNAMIC_TABLE_MODELS
+    FixedFormData
 )
 # 导入新的服务模块
 from app.services import word_processor
@@ -164,8 +164,7 @@ def delete_project(project_id):
     try:
         project = Project.query.get_or_404(project_id)
         FixedFormData.query.filter_by(project_id=project_id).delete()
-        for model in DYNAMIC_TABLE_MODELS.values():
-            model.query.filter_by(project_id=project_id).delete()
+        # The dynamic table models are removed, so the loop is no longer needed.
         db.session.delete(project)
         db.session.commit()
         return jsonify({"message": "项目已成功删除"})
@@ -207,16 +206,9 @@ def get_sheet_data(project_id, sheet_name):
         return jsonify({entry.field_name: entry.field_value for entry in
                         FixedFormData.query.filter_by(project_id=project_id, sheet_name=sheet_name).all()})
     elif config['type'] == 'dynamic_table':
-        model_identifier = config.get('model_identifier')
-        Model = DYNAMIC_TABLE_MODELS.get(model_identifier)
-        if not Model:
-            return jsonify({"error": f"未找到标识符为 {model_identifier} 的模型"}), 404
-
-        items = Model.query.filter_by(project_id=project_id).order_by(Model.id).all()
-        return jsonify(
-            [{c.name: getattr(item, c.name) for c in item.__table__.columns if c.name not in ['id', 'project_id']} for
-             item in items]
-        )
+        # For dynamic tables, the functionality is not yet developed.
+        # Return an empty list to represent an empty table.
+        return jsonify([])
 
 
 @api_bp.route('/projects/<int:project_id>/sheets/<string:sheet_name>', methods=['POST'])
@@ -248,20 +240,8 @@ def save_sheet_data(project_id, sheet_name):
                     db.session.add(entry)
 
         elif config['type'] == 'dynamic_table':
-            model_identifier = config.get('model_identifier')
-            Model = DYNAMIC_TABLE_MODELS.get(model_identifier)
-            if not Model:
-                return jsonify({"error": f"未找到标识符为 {model_identifier} 的模型"}), 404
-
-            # 先删除该项目在该表中的所有旧数据
-            Model.query.filter_by(project_id=project_id).delete()
-            # 插入新数据
-            for row_data in data:
-                # 过滤掉前端可能传来的空行
-                if any(val for val in row_data.values()):
-                    row_data['project_id'] = project_id
-                    entry = Model(**row_data)
-                    db.session.add(entry)
+            # Functionality not developed. Do nothing but act as if it succeeded.
+            pass
 
         db.session.commit()
         return jsonify({"message": f"表单 '{sheet_name}' 数据已成功保存"})

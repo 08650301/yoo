@@ -210,11 +210,7 @@ function uploadExcel() {
     });
 }
 
-function toggleModelIdentifier() {
-    const sheetType = document.getElementById('sheetType').value;
-    const modelGroup = document.getElementById('modelIdentifierGroup');
-    modelGroup.classList.toggle('d-none', sheetType !== 'dynamic_table');
-}
+// The function toggleModelIdentifier is no longer needed and is removed.
 
 function addSection() {
     const name = document.getElementById('sectionName').value;
@@ -253,8 +249,6 @@ function openNewSheetModal(sectionId) {
     document.getElementById('currentSectionId').value = sectionId;
     document.getElementById('sheetName').value = '';
     document.getElementById('sheetType').value = 'fixed_form';
-    document.getElementById('modelIdentifier').value = '';
-    toggleModelIdentifier();
     newSheetModal.show();
 }
 
@@ -262,14 +256,10 @@ function addSheet() {
     const sectionId = document.getElementById('currentSectionId').value;
     const name = document.getElementById('sheetName').value;
     const type = document.getElementById('sheetType').value;
-    const modelIdentifier = document.getElementById('modelIdentifier').value;
     if (!name.trim()) { Swal.fire('输入错误', 'Sheet名称不能为空！', 'warning'); return; }
 
+    // Model identifier is no longer part of the payload
     const payload = { name: name, type: type };
-    if (type === 'dynamic_table') {
-        if (!modelIdentifier) { Swal.fire('选择错误', '动态表格必须选择一个数据模型！', 'warning'); return; }
-        payload.model_identifier = modelIdentifier;
-    }
     postAPI(`/admin/api/sections/${sectionId}/sheets`, payload, '新Sheet创建成功！');
 }
 

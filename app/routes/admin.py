@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from app import db
 from app.models import (
     Template, Section, SheetDefinition, FieldDefinition, ValidationRule, ConditionalRule,
-    WordTemplateChapter, DYNAMIC_TABLE_MODELS
+    WordTemplateChapter
 )
 
 # 这个蓝图处理所有与后台管理界面相关的路由
@@ -40,10 +40,9 @@ def admin_templates():
 def admin_template_detail(template_id):
     template = Template.query.get_or_404(template_id)
     sections = template.sections
-    # 【修复】将 dict_keys 转换为 list，以避免 JSON 序列化错误
-    dynamic_models_list = list(DYNAMIC_TABLE_MODELS.keys())
+    # dynamic_models is no longer needed as we removed the hardcoded models.
     return render_template('admin/admin_template_detail.html', template=template, sections=sections,
-                           dynamic_models=dynamic_models_list, readonly=not template.is_latest)
+                           dynamic_models=[], readonly=not template.is_latest)
 
 
 @admin_bp.route('/templates/history/<string:template_name>')
@@ -441,13 +440,13 @@ def create_sheet(section_id):
         data = request.json
         name = data.get('name', '').strip()
         sheet_type = data.get('type')
-        model_identifier = data.get('model_identifier')
         if not name:
             return jsonify({"error": "Sheet名称不能为空"}), 400
         if sheet_type not in ['fixed_form', 'dynamic_table']:
             return jsonify({"error": "无效的Sheet类型"}), 400
-        if sheet_type == 'dynamic_table' and not model_identifier:
-            return jsonify({"error": "动态表格必须选择一个数据模型"}), 400
+
+        # model_identifier is no longer needed
+        model_identifier = None
 
         last_sheet = SheetDefinition.query.filter_by(section_id=section_id).order_by(
             SheetDefinition.display_order.desc()).first()

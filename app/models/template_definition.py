@@ -2,18 +2,6 @@ from app import db
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import JSON
 
-# This is a good example of modularization. We import the specific models needed
-# for the mapping from their new, separated files.
-from .review_items import (
-    KeyTechIndicator, BizReviewItem, TechReviewItem,
-    ServiceReviewItem, PriceReviewItem, DeductReviewItem
-)
-from .allocation import (
-    ShareAllocationPrinciple, EffectiveSupplierPrinciple,
-    MultiShareAllocationPrinciple
-)
-
-
 # --- 模板管理部分 ---
 
 class Template(db.Model):
@@ -130,13 +118,3 @@ class ConditionalRule(db.Model):
     definition = db.Column(JSON, nullable=False)
 
     sheet = relationship("SheetDefinition", back_populates="conditional_rules")
-
-
-# 动态表格模型标识符到模型类的映射
-DYNAMIC_TABLE_MODELS = {
-    "key_tech_indicator": KeyTechIndicator, "biz_review_item": BizReviewItem, "tech_review_item": TechReviewItem,
-    "service_review_item": ServiceReviewItem, "price_review_item": PriceReviewItem,
-    "deduct_review_item": DeductReviewItem,
-    "share_allocation_principle": ShareAllocationPrinciple, "effective_supplier_principle": EffectiveSupplierPrinciple,
-    "multi_share_allocation_principle": MultiShareAllocationPrinciple
-}

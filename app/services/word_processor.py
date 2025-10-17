@@ -5,7 +5,7 @@ from docx import Document
 from io import BytesIO
 from docxcompose.composer import Composer
 from app import db
-from app.models import Project, Template, FixedFormData, DYNAMIC_TABLE_MODELS, Section, SheetDefinition, WordTemplateChapter
+from app.models import Project, Template, FixedFormData, Section, SheetDefinition, WordTemplateChapter
 
 # --- Private Helper Functions ---
 
@@ -219,18 +219,8 @@ def generate_word_document(project, template, template_config):
         # 填充文本占位符
         _replace_placeholders_in_doc(doc_to_process, placeholders, value_to_label_maps)
 
-        # 填充表格占位符
-        if sheet.sheet_type == "dynamic_table":
-            model_identifier = sheet.model_identifier
-            table_placeholder = f"{{{{table_{model_identifier}}}}}"
-            Model = DYNAMIC_TABLE_MODELS.get(model_identifier)
-            if Model:
-                table_data = Model.query.filter_by(project_id=project.id).all()
-                table_data_dicts = [dict((col, getattr(d, col)) for col in d.__table__.columns.keys()) for d in table_data]
-
-                # 获取该动态表格的列定义
-                column_config = next((form['columns'] for sec in template_config.get("sections", {}).values() for form_name, form in sec.get("forms", {}).items() if form_name == sheet.name), [])
-                _replace_table_placeholder(doc_to_process, table_placeholder, table_data_dicts, column_config)
+        # 动态表格的占位符处理逻辑已被移除，因为其数据模型不再存在。
+        # 未来实现新表格时，这里需要新的逻辑。
 
         # 如果不是第一个文档，则将其追加到主文档
         if i > 0:
