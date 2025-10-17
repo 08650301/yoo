@@ -1,8 +1,10 @@
 // 从 <body> 标签的 data-* 属性中获取后端传递的数据
 const sheetId = document.body.dataset.sheetId;
 const isReadonly = document.body.dataset.readonly === 'true';
+const isColumnMode = document.body.dataset.isColumnMode === 'true';
+const titleText = isColumnMode ? '列' : '字段';
 
-let allFields = [];
+let allFields = []; // 在这个JS中，我们统一称之为 field，无论UI上显示“字段”还是“列”
 let currentFieldName = ''; // 当前编辑的字段名称
 try {
     allFields = JSON.parse(document.body.dataset.fields || '[]');
@@ -12,7 +14,9 @@ try {
 }
 
 let fieldModal = null, ruleModal = null;
-const fieldTypeMap = {
+
+// 根据当前模式（字段/列）确定可用的类型
+const fieldModeTypes = {
     text: '单行文本',
     textarea: '多行文本',
     number: '数字',
@@ -22,6 +26,13 @@ const fieldTypeMap = {
     'checkbox-group': '多选按钮',
     'select-multiple': '下拉多选'
 };
+const columnModeTypes = {
+    text: '单行文本',
+    textarea: '多行文本',
+    number: '数字',
+    date: '日期'
+};
+const currentFieldTypeMap = isColumnMode ? columnModeTypes : fieldModeTypes;
 const FIELD_TYPES_REQUIRING_OPTIONS = ['select', 'select-multiple', 'radio', 'checkbox-group'];
 
 // --- Tab 和按钮管理 ---
@@ -29,7 +40,7 @@ function updateActionButtons(activeTab) {
     const container = document.getElementById('action-buttons');
     if (!container) return;
     if (activeTab === 'fields') {
-        container.innerHTML = `<button class="btn btn-primary" onclick="openFieldModal()">+ 新增字段</button>`;
+        container.innerHTML = `<button class="btn btn-primary" onclick="openFieldModal()">+ 新增${titleText}</button>`;
     } else if (activeTab === 'rules') {
         container.innerHTML = `<button class="btn btn-primary" onclick="openRuleModal()">+ 新增规则</button>`;
     }
@@ -46,18 +57,31 @@ document.addEventListener("DOMContentLoaded", function() {
         rulesTabBtn.addEventListener('shown.bs.tab', () => updateActionButtons('rules'));
     }
 
+    // 默认添加一个不可删除的“序号”列
+    if (isColumnMode && allFields.length === 0) {
+        const seqField = {
+            id: -1, // 特殊ID表示不可操作
+            name: 'sequence',
+            label: '序号',
+            field_type: 'number',
+            validation_rules: [{ rule_type: 'disabled', rule_value: 'True' }]
+        };
+        allFields.unshift(seqField);
+    }
+
+
     updateActionButtons('fields');
     renderFieldsTable();
     if(rulesTabBtn) fetchAndRenderRules();
     if (!isReadonly) initializeSortable();
 });
 
-// --- 字段列表渲染 ---
+// --- 字段/列列表渲染 ---
 function renderFieldsTable() {
     const tbody = document.getElementById('fields-tbody');
     tbody.innerHTML = '';
     if (allFields.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">此Sheet下还没有任何字段。</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">此Sheet下还没有任何${titleText}。</td></tr>`;
         return;
     }
     allFields.forEach(field => {
@@ -67,12 +91,20 @@ function renderFieldsTable() {
         const isDisabled = rules.disabled === 'True' ? '<span class="badge bg-success">是</span>' : '<span class="badge bg-danger">否</span>';
         const lengthLimit = [rules.minLength, rules.maxLength].filter(Boolean).join(' - ') || '—';
         const valueRange = [rules.minValue, rules.maxValue].filter(Boolean).join(' - ') || '—';
-        const fieldTypeText = fieldTypeMap[field.field_type] || field.field_type;
+        const fieldTypeText = currentFieldTypeMap[field.field_type] || field.field_type;
 
         const tr = document.createElement('tr');
         tr.dataset.id = field.id;
+
+        const handleCell = field.id === -1 ? '' : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>`;
+
+        const actionButtons = field.id === -1 ? '<span>系统保留</span>' : `
+            <button class="btn btn-outline-info btn-sm" onclick='openFieldModal(${JSON.stringify(field)})'>${isReadonly ? '查看' : '编辑'}</button>
+            ${!isReadonly ? `<button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteField(${field.id}, '${field.label}')">删除</button>` : ''}
+        `;
+
         tr.innerHTML = `
-            <td class="text-center handle ${isReadonly ? 'd-none' : ''}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg></td>
+            <td class="text-center handle ${isReadonly ? 'd-none' : ''}">${handleCell}</td>
             <td class="fw-bold">${field.label}</td>
             <td><code>${field.name}</code></td>
             <td>${fieldTypeText}</td>
@@ -80,24 +112,16 @@ function renderFieldsTable() {
             <td class="text-center">${isDisabled}</td>
             <td class="text-center">${lengthLimit}</td>
             <td class="text-center">${valueRange}</td>
-            <td>
-                <button class="btn btn-outline-info btn-sm" onclick='openFieldModal(${JSON.stringify(field)})'>${isReadonly ? '查看' : '编辑'}</button>
-                ${!isReadonly ? `<button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteField(${field.id}, '${field.label}')">删除</button>` : ''}
-            </td>
+            <td>${actionButtons}</td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// --- 字段弹窗与保存逻辑 ---
+// --- 弹窗与保存逻辑 ---
 function generateFieldNameFromLabel(str) {
-    // 移除非法字符，将汉字视为空格，然后转换为小写并用下划线连接
     const baseName = str.replace(/[\u4e00-\u9fa5]/g, ' ').toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '_');
-    // 正则表达式，用于检查字符串是否只包含数字
     const isPurelyNumeric = /^\d+$/.test(baseName);
-
-    // 如果处理后的基础名称为空、为"field"或纯数字，则生成一个唯一的名称
-    // 这样做是为了确保内部名称的有效性和唯一性
     if (!baseName || baseName === 'field' || isPurelyNumeric) {
         const timestamp = Date.now();
         const random = Math.floor(Math.random() * 1000);
@@ -114,20 +138,33 @@ function autoGenerateName() {
 
 function updateModalUI() {
     const fieldType = document.getElementById('fieldType').value;
-    const optionsGroup = document.getElementById('optionsGroup');
-    const optionsLabel = optionsGroup.querySelector('label[for="fieldOptionLabels"]');
-    const textRules = document.querySelector('.validation-group.text-rules');
-    const numericRules = document.querySelector('.validation-group.numeric-rules');
 
-    const needsOptions = FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType);
-    const isTextual = ['text', 'textarea'].includes(fieldType);
+    // 根据模式显示/隐藏选项
+    document.getElementById('fixed-form-only-options').style.display = isColumnMode ? 'none' : 'block';
+    document.getElementById('fixed-form-validation-rules').style.display = isColumnMode ? 'none' : 'block';
 
-    optionsGroup.classList.toggle('d-none', !needsOptions);
-    if (optionsLabel.querySelector('.required-indicator')) {
-        optionsLabel.querySelector('.required-indicator').remove();
+    // 对于固定表单，显示/隐藏特定校验规则
+    if (!isColumnMode) {
+        const textRules = document.querySelector('.validation-group.text-rules');
+        const numericRules = document.querySelector('.validation-group.numeric-rules');
+        const isTextual = ['text', 'textarea'].includes(fieldType);
+        if (textRules) textRules.style.display = isTextual ? 'block' : 'none';
+        if (numericRules) numericRules.style.display = fieldType === 'number' ? 'block' : 'none';
     }
-    if (needsOptions) {
-        optionsLabel.insertAdjacentHTML('beforeend', '<span class="required-indicator text-danger">*</span>');
+
+    // “允许空格”规则仅对文本类型有意义
+    const allowSpacesGroup = document.getElementById('allow-spaces-group');
+    if (allowSpacesGroup) {
+        allowSpacesGroup.style.display = ['text', 'textarea'].includes(fieldType) ? 'block' : 'none';
+    }
+
+    // “必填”和“只读”规则对于列模式无效
+    if (isColumnMode) {
+        document.getElementById('required-rule-group').style.display = 'none';
+        document.getElementById('readonly-rule-group').style.display = 'none';
+    } else {
+        document.getElementById('required-rule-group').style.display = 'inline-block';
+        document.getElementById('readonly-rule-group').style.display = 'inline-block';
     }
 
     const defaultSingle = document.getElementById('fieldDefaultSingle');
@@ -139,54 +176,32 @@ function updateModalUI() {
     } else if (fieldType !== 'textarea' && !defaultMulti.classList.contains('d-none')) {
         defaultSingle.value = defaultMulti.value;
     }
-
-    if (textRules) textRules.style.display = isTextual ? 'block' : 'none';
-    if (numericRules) numericRules.style.display = fieldType === 'number' ? 'block' : 'none';
-
-    const allowSpacesGroup = document.getElementById('allow-spaces-group');
-    if (allowSpacesGroup) {
-        allowSpacesGroup.style.display = isTextual ? 'block' : 'none';
-    }
-
-    // 新增：控制导出选项组的可见性
-    const exportOptionsGroup = document.getElementById('exportOptionsGroup');
-    if (exportOptionsGroup) {
-        exportOptionsGroup.classList.toggle('d-none', !needsOptions);
-    }
 }
 
 function openFieldModal(fieldData = null) {
     if (!fieldModal) {
         fieldModal = new bootstrap.Modal(document.getElementById('fieldModal'));
-        // 新增：选项框同步滚动和输入的逻辑
         const labelsEl = document.getElementById('fieldOptionLabels');
         const valuesEl = document.getElementById('fieldOptionValues');
-
         labelsEl.addEventListener('scroll', () => { valuesEl.scrollTop = labelsEl.scrollTop; });
         valuesEl.addEventListener('scroll', () => { labelsEl.scrollTop = valuesEl.scrollTop; });
-
         let previousLabels = [];
         labelsEl.addEventListener('input', () => {
             const currentLabels = labelsEl.value.split('\n');
             const currentValues = valuesEl.value.split('\n');
-
-            // 确保 values 数组长度至少和 labels 一样长
             while(currentValues.length < currentLabels.length) {
                 currentValues.push('');
             }
-
             const newValues = currentLabels.map((label, index) => {
                 const oldValue = currentValues[index] || '';
                 const oldLabel = previousLabels[index] || '';
-                // 只有当旧值为空，或者旧值和旧标签相同时，才用新标签同步更新
                 if (oldValue === '' || oldValue === oldLabel) {
                     return label;
                 }
                 return oldValue;
             });
-
             valuesEl.value = newValues.join('\n');
-            previousLabels = currentLabels.slice(); // 保存当前状态以备下次比较
+            previousLabels = currentLabels.slice();
         });
     }
 
@@ -198,14 +213,23 @@ function openFieldModal(fieldData = null) {
     document.getElementById('fieldOptionLabels').value = '';
     document.getElementById('fieldOptionValues').value = '';
 
+    // 填充类型下拉框
+    const fieldTypeSelect = document.getElementById('fieldType');
+    fieldTypeSelect.innerHTML = '';
+    for (const [value, text] of Object.entries(currentFieldTypeMap)) {
+        fieldTypeSelect.innerHTML += `<option value="${value}">${text}</option>`;
+    }
+
+    document.getElementById('fieldModalTitle').textContent = `新增${titleText}`;
+    document.getElementById('fieldTypeLabel').textContent = `${titleText}类型`;
     currentFieldName = '';
 
     if (fieldData) {
-        document.getElementById('fieldModalTitle').textContent = isReadonly ? "查看字段" : "编辑字段";
+        document.getElementById('fieldModalTitle').textContent = isReadonly ? `查看${titleText}` : `编辑${titleText}`;
         document.getElementById('fieldId').value = fieldData.id;
         document.getElementById('fieldLabel').value = fieldData.label;
         document.getElementById('fieldName').value = fieldData.name;
-        document.getElementById('fieldType').value = fieldData.field_type;
+        fieldTypeSelect.value = fieldData.field_type;
 
         if (fieldData.options && Array.isArray(fieldData.options)) {
             document.getElementById('fieldOptionLabels').value = fieldData.options.map(opt => opt.label).join('\n');
@@ -222,20 +246,17 @@ function openFieldModal(fieldData = null) {
             const el = document.getElementById('validation' + r.rule_type.charAt(0).toUpperCase() + r.rule_type.slice(1));
             if (el) {
                 if(el.type === 'checkbox') el.checked = (r.rule_value === 'True');
-                else if (['contains', 'excludes'].includes(r.rule_type)) el.value = (r.rule_value || '').replace(/,/g, '\n');
                 else el.value = r.rule_value || '';
             }
         });
 
-        // 新增：根据字段数据设置导出选项
-        // 使用 document.querySelector 来精确查找 radio 按钮并设置其 checked 状态
-        document.querySelector(`input[name="exportWordAsLabel"][value="${fieldData.export_word_as_label}"]`).checked = true;
-        document.querySelector(`input[name="exportExcelAsLabel"][value="${fieldData.export_excel_as_label}"]`).checked = true;
+        if (FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldData.field_type)) {
+            document.querySelector(`input[name="exportWordAsLabel"][value="${fieldData.export_word_as_label}"]`).checked = true;
+            document.querySelector(`input[name="exportExcelAsLabel"][value="${fieldData.export_excel_as_label}"]`).checked = true;
+        }
 
     } else {
-        document.getElementById('fieldModalTitle').textContent = "新增字段";
         document.getElementById('fieldId').value = '';
-        // 新增：为新字段重置为默认导出选项
         document.querySelector('input[name="exportWordAsLabel"][value="false"]').checked = true;
         document.querySelector('input[name="exportExcelAsLabel"][value="true"]').checked = true;
     }
@@ -250,11 +271,25 @@ function saveField() {
     const fieldId = document.getElementById('fieldId').value;
     const url = fieldId ? `/admin/api/fields/${fieldId}` : `/admin/api/sheets/${sheetId}/fields`;
     const method = fieldId ? 'PUT' : 'POST';
+
     const validation = {};
-    document.querySelectorAll('[id^="validation"]').forEach(el => {
-        const key = el.id.replace('validation', '').charAt(0).toLowerCase() + el.id.slice(11);
-        let value = el.type === 'checkbox' ? (el.checked ? 'True' : '') : el.value.trim();
-        if (value) {
+    const validationCheckboxes = ['validationRequired', 'validationDisabled', 'validationAllowEnglishSpace', 'validationAllowChineseSpace'];
+    const validationInputs = ['validationPattern', 'validationMinLength', 'validationMaxLength', 'validationContains', 'validationExcludes', 'validationMinValue', 'validationMaxValue'];
+
+    // 只收集当前模式下可见的校验规则
+    validationCheckboxes.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.offsetParent !== null) { // 检查元素是否可见
+            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
+            if (el.checked) validation[key] = 'True';
+        }
+    });
+
+    validationInputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.offsetParent !== null && el.value.trim()) {
+            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
+            let value = el.value.trim();
             if (['contains', 'excludes'].includes(key)) value = value.replace(/\n/g, ',');
             validation[key] = value;
         }
@@ -267,7 +302,7 @@ function saveField() {
     if (!fieldId || fieldName !== currentFieldName) {
         const existingField = allFields.find(f => f.name === fieldName);
         if (existingField) {
-            Swal.fire('输入错误', `字段内部名称 '${fieldName}' 已存在，请使用其他名称！`, 'warning');
+            Swal.fire('输入错误', `${titleText}内部名称 '${fieldName}' 已存在，请使用其他名称！`, 'warning');
             return;
         }
     }
@@ -281,21 +316,19 @@ function saveField() {
         validation: validation
     };
 
-    if (FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType)) {
+    if (!isColumnMode && FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType)) {
         payload.option_labels = document.getElementById('fieldOptionLabels').value.trim().split('\n');
         payload.option_values = document.getElementById('fieldOptionValues').value.trim().split('\n');
-
-        // 新增：只有当字段是选择类时，才读取并添加导出配置
         payload.export_word_as_label = document.querySelector('input[name="exportWordAsLabel"]:checked').value === 'true';
         payload.export_excel_as_label = document.querySelector('input[name="exportExcelAsLabel"]:checked').value === 'true';
     }
 
     if (!payload.label || !payload.name) { Swal.fire('输入错误', '显示名称和内部名称不能为空！', 'warning'); return; }
-    (method === 'PUT' ? putAPI : postAPI)(url, payload, fieldId ? '字段更新成功！' : '新字段创建成功！');
+    (method === 'PUT' ? putAPI : postAPI)(url, payload, fieldId ? `${titleText}更新成功！` : `新${titleText}创建成功！`);
 }
 
 function deleteField(fieldId, fieldLabel) {
-    deleteAPI(`/admin/api/fields/${fieldId}`, `字段 "${fieldLabel}"`);
+    deleteAPI(`/admin/api/fields/${fieldId}`, `${titleText} "${fieldLabel}"`);
 }
 
 // --- 联动规则管理 (省略，未改动) ---
@@ -305,10 +338,11 @@ function deleteField(fieldId, fieldLabel) {
 function initializeSortable() {
     const fieldsTbody = document.getElementById('fields-tbody');
     new Sortable(fieldsTbody, {
+        filter: 'td:has(span:contains("系统保留"))', // 不允许拖动系统保留项
         handle: '.handle', animation: 150, ghostClass: 'sortable-ghost',
         onEnd: function (evt) {
-            const order = Array.from(fieldsTbody.querySelectorAll('tr')).map(row => row.dataset.id);
-            postAPI(`/admin/api/sheets/${sheetId}/fields/reorder`, { order: order }, '字段顺序已更新', true);
+            const order = Array.from(fieldsTbody.querySelectorAll('tr')).map(row => row.dataset.id).filter(id => id !== '-1'); // 过滤掉系统保留项
+            postAPI(`/admin/api/sheets/${sheetId}/fields/reorder`, { order: order }, `${titleText}顺序已更新`, true);
         },
     });
 }

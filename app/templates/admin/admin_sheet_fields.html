@@ -1,9 +1,10 @@
+{% set title_text = '列' if is_column_mode else '字段' %}
 <!doctype html>
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>管理字段: {{ sheet.name }}</title>
+    <title>管理{{ title_text }}: {{ sheet.name }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .swal2-container { z-index: 2000; }
@@ -14,11 +15,11 @@
         .table th, .table td { vertical-align: middle; }
     </style>
 </head>
-<body data-sheet-id="{{ sheet.id }}" data-readonly="{{ not sheet.section.template.is_latest | tojson | safe }}" data-fields="{{ fields_data }}">
+<body data-sheet-id="{{ sheet.id }}" data-readonly="{{ not sheet.section.template.is_latest | tojson | safe }}" data-fields="{{ fields_data }}" data-is-column-mode="{{ is_column_mode | tojson }}">
     <div class="container-fluid mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="h2">管理: <span class="text-primary">{{ sheet.name }}</span></h1>
+                <h1 class="h2">管理{{ title_text }}: <span class="text-primary">{{ sheet.name }}</span></h1>
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="/admin/templates">模板管理</a></li>
@@ -36,7 +37,7 @@
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="fields-tab-btn" data-bs-toggle="tab" data-bs-target="#fields-tab" type="button" role="tab">字段列表</button>
+                <button class="nav-link active" id="fields-tab-btn" data-bs-toggle="tab" data-bs-target="#fields-tab" type="button" role="tab">{{ title_text }}列表</button>
             </li>
             {% if sheet.sheet_type == 'fixed_form' %}
             <li class="nav-item" role="presentation">
@@ -55,7 +56,7 @@
                                 <th style="width: 3%;"></th>
                                 <th style="width: 15%;">显示名称</th>
                                 <th style="width: 15%;">内部名称</th>
-                                <th style="width: 10%;">字段类型</th>
+                                <th style="width: 10%;">{{ title_text }}类型</th>
                                 <th style="width: 7%;">必填</th>
                                 <th style="width: 7%;">只读</th>
                                 <th style="width: 10%;">长度限制</th>

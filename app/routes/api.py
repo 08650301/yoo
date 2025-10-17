@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request, send_file
 from app import db
 from app.models import (
     Project, Template, Section, SheetDefinition, FieldDefinition, ConditionalRule,
-    FixedFormData
+    FixedFormData, DynamicTableRow
 )
 # 导入新的服务模块
 from app.services import word_processor
@@ -164,7 +164,7 @@ def delete_project(project_id):
     try:
         project = Project.query.get_or_404(project_id)
         FixedFormData.query.filter_by(project_id=project_id).delete()
-        # The dynamic table models are removed, so the loop is no longer needed.
+        DynamicTableRow.query.filter_by(project_id=project_id).delete()
         db.session.delete(project)
         db.session.commit()
         return jsonify({"message": "项目已成功删除"})
@@ -202,13 +202,18 @@ def get_sheet_data(project_id, sheet_name):
     if not config:
         return jsonify({"error": "Sheet名称不存在"}), 404
 
+    sheet_def = SheetDefinition.query.filter_by(name=sheet_name).first_or_404()
+
     if config['type'] == 'fixed_form':
         return jsonify({entry.field_name: entry.field_value for entry in
                         FixedFormData.query.filter_by(project_id=project_id, sheet_name=sheet_name).all()})
     elif config['type'] == 'dynamic_table':
-        # For dynamic tables, the functionality is not yet developed.
-        # Return an empty list to represent an empty table.
-        return jsonify([])
+        rows = DynamicTableRow.query.filter_by(
+            project_id=project_id,
+            sheet_id=sheet_def.id
+        ).order_by(DynamicTableRow.display_order).all()
+        # 直接返回存储在 `data` 字段中的JSON对象列表
+        return jsonify([row.data for row in rows])
 
 
 @api_bp.route('/projects/<int:project_id>/sheets/<string:sheet_name>', methods=['POST'])
@@ -225,6 +230,8 @@ def save_sheet_data(project_id, sheet_name):
 
         data = request.json
 
+        sheet_def = SheetDefinition.query.filter_by(name=sheet_name).first_or_404()
+
         if config['type'] == 'fixed_form':
             # 先删除该项目该表单的所有旧数据
             FixedFormData.query.filter_by(project_id=project_id, sheet_name=sheet_name).delete()
@@ -240,8 +247,19 @@ def save_sheet_data(project_id, sheet_name):
                     db.session.add(entry)
 
         elif config['type'] == 'dynamic_table':
-            # Functionality not developed. Do nothing but act as if it succeeded.
-            pass
+            # 先删除该项目在该动态表中的所有旧数据
+            DynamicTableRow.query.filter_by(project_id=project_id, sheet_id=sheet_def.id).delete()
+            # 插入新数据
+            for index, row_data in enumerate(data):
+                # 过滤掉前端可能传来的空行 (所有值都为空)
+                if any(val for val in row_data.values()):
+                    entry = DynamicTableRow(
+                        project_id=project_id,
+                        sheet_id=sheet_def.id,
+                        data=row_data,
+                        display_order=index
+                    )
+                    db.session.add(entry)
 
         db.session.commit()
         return jsonify({"message": f"表单 '{sheet_name}' 数据已成功保存"})

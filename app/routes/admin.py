@@ -58,6 +58,9 @@ def admin_sheet_fields(sheet_id):
     sheet = SheetDefinition.query.options(joinedload(SheetDefinition.section).joinedload(Section.template)).get_or_404(
         sheet_id)
 
+    # 根据 sheet 类型确定是管理“字段”还是“列”
+    is_column_mode = (sheet.sheet_type == 'dynamic_table')
+
     fields_query = sheet.fields
     fields_json = []
     for field in fields_query:
@@ -82,7 +85,7 @@ def admin_sheet_fields(sheet_id):
     from flask import json
     fields_data = json.dumps(fields_json, ensure_ascii=False)
 
-    return render_template('admin/admin_sheet_fields.html', sheet=sheet, fields_data=fields_data)
+    return render_template('admin/admin_sheet_fields.html', sheet=sheet, fields_data=fields_data, is_column_mode=is_column_mode)
 
 
 # ==============================================================================

@@ -274,15 +274,7 @@ function loadForm(sheetName, sectionName) {
                 }, 100);
             }
         } else if (config.type === 'dynamic_table') {
-            // Display a placeholder for the upcoming feature
-            contentDiv.innerHTML = `
-                <div class="alert alert-info">
-                    <h4 class="alert-heading">功能开发中</h4>
-                    <p>您所选择的“动态表格”功能正在积极开发中，旨在未来提供一个可由您完全自定义列的、更灵活的表格系统。</p>
-                    <hr>
-                    <p class="mb-0">当前此部分无需填写或保存。</p>
-                </div>
-            `;
+            renderDynamicTable(contentDiv, config, data);
         }
 
         // 构建 value -> label 映射表
@@ -385,6 +377,124 @@ function renderFixedForm(container, config, data) {
         container.appendChild(formGroup);
     });
 }
+
+function renderDynamicTable(container, config, data) {
+    const columns = config.columns || [];
+    // 确保“序号”列始终在第一位
+    const finalColumns = [
+        { name: 'sequence', label: '序号', field_type: 'number', validation_rules: [{rule_type: 'disabled', rule_value: 'True'}] },
+        ...columns.filter(c => c.name !== 'sequence')
+    ];
+
+    let tableHtml = `
+        <table class="table table-bordered table-hover">
+            <thead>
+                <tr>
+                    ${finalColumns.map(col => `<th>${col.label}</th>`).join('')}
+                    <th style="width: 10%;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    if (data.length > 0) {
+        data.forEach((rowData, index) => {
+            tableHtml += `<tr data-row-index="${index}">`;
+            finalColumns.forEach(col => {
+                const value = rowData[col.name] || (col.name === 'sequence' ? index + 1 : '');
+                const isDisabled = (col.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+                const readonlyAttr = isDisabled ? 'readonly' : '';
+
+                let inputHtml = '';
+                switch(col.field_type) {
+                    case 'textarea':
+                        inputHtml = `<textarea class="form-control" name="${col.name}" ${readonlyAttr}>${value}</textarea>`;
+                        break;
+                    case 'number':
+                        inputHtml = `<input type="number" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                        break;
+                    case 'date':
+                        inputHtml = `<input type="date" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                        break;
+                    default: // text
+                        inputHtml = `<input type="text" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                }
+                tableHtml += `<td>${inputHtml}</td>`;
+            });
+            tableHtml += `<td><button type="button" class="btn btn-danger btn-sm" onclick="removeTableRow(this)">删除</button></td>`;
+            tableHtml += `</tr>`;
+        });
+    }
+
+    tableHtml += `
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-success mt-2" onclick="addTableRow()">+ 新增一行</button>
+    `;
+
+    container.innerHTML = tableHtml;
+}
+
+// 新增：用于动态表格交互的辅助函数
+window.addTableRow = function() {
+    const table = document.querySelector('#sheet-content table');
+    const tbody = table.querySelector('tbody');
+    const newIndex = tbody.rows.length;
+    const newRow = tbody.insertRow();
+    newRow.dataset.rowIndex = newIndex;
+
+    const columns = masterConfig.sections[currentSectionName].forms[currentSheetName].columns || [];
+    const finalColumns = [
+        { name: 'sequence', label: '序号', field_type: 'number', validation_rules: [{rule_type: 'disabled', rule_value: 'True'}] },
+        ...columns.filter(c => c.name !== 'sequence')
+    ];
+
+    finalColumns.forEach(col => {
+        const cell = newRow.insertCell();
+        const value = (col.name === 'sequence') ? newIndex + 1 : '';
+        const isDisabled = (col.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+        const readonlyAttr = isDisabled ? 'readonly' : '';
+
+        let inputHtml = '';
+        switch(col.field_type) {
+            case 'textarea':
+                inputHtml = `<textarea class="form-control" name="${col.name}" ${readonlyAttr}>${value}</textarea>`;
+                break;
+            case 'number':
+                inputHtml = `<input type="number" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                break;
+            case 'date':
+                inputHtml = `<input type="date" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                break;
+            default: // text
+                inputHtml = `<input type="text" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+        }
+        cell.innerHTML = inputHtml;
+    });
+
+    const actionCell = newRow.insertCell();
+    actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm" onclick="removeTableRow(this)">删除</button>`;
+
+    // 标记表单已更改
+    triggerChange();
+}
+
+window.removeTableRow = function(button) {
+    const row = button.closest('tr');
+    row.remove();
+    // 重新计算所有行的序号
+    const tbody = document.querySelector('#sheet-content tbody');
+    Array.from(tbody.rows).forEach((r, index) => {
+        r.dataset.rowIndex = index;
+        const seqInput = r.querySelector('input[name="sequence"]');
+        if (seqInput) {
+            seqInput.value = index + 1;
+        }
+    });
+    // 标记表单已更改
+    triggerChange();
+}
+
 
 function initializeCustomSelects() {
     document.querySelectorAll('.custom-select-multiple').forEach(selectWrapper => {
@@ -522,12 +632,19 @@ function saveData(isAuto) {
             }
         });
     } else if (config.type === 'dynamic_table') {
-        // Functionality is not developed, so we do nothing.
-        // We can just update the status to pretend it was saved.
-        const now = new Date();
-        updateSaveStatus(`已于 ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} 保存`);
-        hasChanges = false;
-        return; // Exit the function early
+        payload = [];
+        const rows = formElement.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const rowData = {};
+            const inputs = row.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                rowData[input.name] = input.value;
+            });
+            // 只添加非空行
+            if (Object.values(rowData).some(val => val !== '')) {
+                payload.push(rowData);
+            }
+        });
     }
 
     if (isAuto) {

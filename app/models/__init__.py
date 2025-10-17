@@ -16,6 +16,9 @@ from .template_definition import (
     WordTemplateChapter
 )
 
+# Import models from the new dynamic_data.py
+from .dynamic_data import DynamicTableRow
+
 # It's a good practice to define __all__ to specify what gets imported
 # when a client does 'from app.models import *'
 __all__ = [
@@ -23,5 +26,7 @@ __all__ = [
     'Project', 'FixedFormData',
     # from template_definition
     'Template', 'Section', 'SheetDefinition', 'FieldDefinition',
-    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter'
+    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter',
+    # from dynamic_data
+    'DynamicTableRow'
 ]
