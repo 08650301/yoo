@@ -402,22 +402,23 @@ function renderDynamicTable(container, config, data) {
             tableHtml += `<tr data-row-index="${index}">`;
             finalColumns.forEach(col => {
                 const value = rowData[col.name] || (col.name === 'sequence' ? index + 1 : '');
-                const isDisabled = (col.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+
+                // 【修复】为动态表格列增加必填和只读校验
+                const rules = (col.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
+                const isDisabled = (rules.disabled || '').toLowerCase() === 'true';
+                const isRequired = (rules.required || '').toLowerCase() === 'true';
                 const readonlyAttr = isDisabled ? 'readonly' : '';
+                const requiredAttr = isRequired ? 'required' : '';
 
                 let inputHtml = '';
+                const commonAttrs = `class="form-control" name="${col.name}" ${readonlyAttr} ${requiredAttr}`;
+
                 switch(col.field_type) {
                     case 'textarea':
-                        inputHtml = `<textarea class="form-control" name="${col.name}" ${readonlyAttr}>${value}</textarea>`;
+                        inputHtml = `<textarea ${commonAttrs}>${value}</textarea>`;
                         break;
-                    case 'number':
-                        inputHtml = `<input type="number" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
-                        break;
-                    case 'date':
-                        inputHtml = `<input type="date" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
-                        break;
-                    default: // text
-                        inputHtml = `<input type="text" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+                    default: // text, number, date
+                        inputHtml = `<input type="${col.field_type || 'text'}" ${commonAttrs} value="${value}">`;
                 }
                 tableHtml += `<td>${inputHtml}</td>`;
             });
@@ -452,22 +453,23 @@ window.addTableRow = function() {
     finalColumns.forEach(col => {
         const cell = newRow.insertCell();
         const value = (col.name === 'sequence') ? newIndex + 1 : '';
-        const isDisabled = (col.validation_rules || []).some(r => r.rule_type === 'disabled' && r.rule_value === 'True');
+
+        // 【修复】为动态表格列增加必填和只读校验
+        const rules = (col.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
+        const isDisabled = (rules.disabled || '').toLowerCase() === 'true';
+        const isRequired = (rules.required || '').toLowerCase() === 'true';
         const readonlyAttr = isDisabled ? 'readonly' : '';
+        const requiredAttr = isRequired ? 'required' : '';
 
         let inputHtml = '';
+        const commonAttrs = `class="form-control" name="${col.name}" ${readonlyAttr} ${requiredAttr}`;
+
         switch(col.field_type) {
             case 'textarea':
-                inputHtml = `<textarea class="form-control" name="${col.name}" ${readonlyAttr}>${value}</textarea>`;
+                inputHtml = `<textarea ${commonAttrs}>${value}</textarea>`;
                 break;
-            case 'number':
-                inputHtml = `<input type="number" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
-                break;
-            case 'date':
-                inputHtml = `<input type="date" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
-                break;
-            default: // text
-                inputHtml = `<input type="text" class="form-control" name="${col.name}" value="${value}" ${readonlyAttr}>`;
+            default: // text, number, date
+                inputHtml = `<input type="${col.field_type || 'text'}" ${commonAttrs} value="${value}">`;
         }
         cell.innerHTML = inputHtml;
     });

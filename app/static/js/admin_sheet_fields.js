@@ -57,19 +57,6 @@ document.addEventListener("DOMContentLoaded", function() {
         rulesTabBtn.addEventListener('shown.bs.tab', () => updateActionButtons('rules'));
     }
 
-    // 默认添加一个不可删除的“序号”列
-    if (isColumnMode && allFields.length === 0) {
-        const seqField = {
-            id: -1, // 特殊ID表示不可操作
-            name: 'sequence',
-            label: '序号',
-            field_type: 'number',
-            validation_rules: [{ rule_type: 'disabled', rule_value: 'True' }]
-        };
-        allFields.unshift(seqField);
-    }
-
-
     updateActionButtons('fields');
     renderFieldsTable();
     if(rulesTabBtn) fetchAndRenderRules();
@@ -80,10 +67,31 @@ document.addEventListener("DOMContentLoaded", function() {
 function renderFieldsTable() {
     const tbody = document.getElementById('fields-tbody');
     tbody.innerHTML = '';
+
+    // 【修复】在动态表格模式下，始终在最上方渲染固定的“序号”行
+    if (isColumnMode) {
+        const seqRow = document.createElement('tr');
+        seqRow.innerHTML = `
+            <td class="text-center handle ${isReadonly ? 'd-none' : ''}"></td>
+            <td class="fw-bold">序号</td>
+            <td><code>sequence</code></td>
+            <td>数字</td>
+            <td class="text-center">—</td>
+            <td class="text-center">—</td>
+            <td class="text-center">—</td>
+            <td class="text-center">—</td>
+            <td><span>系统保留</span></td>
+        `;
+        tbody.appendChild(seqRow);
+    }
+
     if (allFields.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">此Sheet下还没有任何${titleText}。</td></tr>`;
+        if (!isColumnMode) { // 如果不是列模式，才显示此消息
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">此Sheet下还没有任何${titleText}。</td></tr>`;
+        }
         return;
     }
+
     allFields.forEach(field => {
         const rules = (field.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
 
@@ -158,14 +166,9 @@ function updateModalUI() {
         allowSpacesGroup.style.display = ['text', 'textarea'].includes(fieldType) ? 'block' : 'none';
     }
 
-    // “必填”和“只读”规则对于列模式无效
-    if (isColumnMode) {
-        document.getElementById('required-rule-group').style.display = 'none';
-        document.getElementById('readonly-rule-group').style.display = 'none';
-    } else {
-        document.getElementById('required-rule-group').style.display = 'inline-block';
-        document.getElementById('readonly-rule-group').style.display = 'inline-block';
-    }
+    // 【修复】为动态表格的列启用“必填”和“只读”校验
+    document.getElementById('required-rule-group').style.display = 'inline-block';
+    document.getElementById('disabled-rule-group').style.display = 'inline-block';
 
     const defaultSingle = document.getElementById('fieldDefaultSingle');
     const defaultMulti = document.getElementById('fieldDefaultMulti');
@@ -341,7 +344,8 @@ function initializeSortable() {
         filter: 'td:has(span:contains("系统保留"))', // 不允许拖动系统保留项
         handle: '.handle', animation: 150, ghostClass: 'sortable-ghost',
         onEnd: function (evt) {
-            const order = Array.from(fieldsTbody.querySelectorAll('tr')).map(row => row.dataset.id).filter(id => id !== '-1'); // 过滤掉系统保留项
+            // 【修复】确保从 DOM 节点获取 ID 时，能正确过滤掉“序号”行（它的 id 是 undefined）
+            const order = Array.from(fieldsTbody.querySelectorAll('tr[data-id]')).map(row => row.dataset.id);
             postAPI(`/admin/api/sheets/${sheetId}/fields/reorder`, { order: order }, `${titleText}顺序已更新`, true);
         },
     });
