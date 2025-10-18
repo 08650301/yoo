@@ -4,15 +4,9 @@ const isReadonly = document.body.dataset.readonly === 'true';
 const isColumnMode = document.body.dataset.isColumnMode === 'true';
 const titleText = isColumnMode ? '列' : '字段';
 
-let allFields = []; // 在这个JS中，我们统一称之为 field，无论UI上显示“字段”还是“列”
+let allFields = Array.isArray(allFieldsData) ? allFieldsData : []; // 直接从全局变量获取数据
 let currentEditingField = null; // 【新】存储当前正在编辑的字段的完整数据
 let currentFieldName = ''; // 当前编辑的字段名称
-try {
-    allFields = JSON.parse(document.body.dataset.fields || '[]');
-} catch (e) {
-    console.error('JSON解析错误:', e);
-    allFields = [];
-}
 
 let fieldModal = null, ruleModal = null;
 
@@ -152,6 +146,11 @@ function updateModalUI() {
     document.getElementById('fixed-form-only-options').style.display = isColumnMode ? 'none' : 'block';
     document.getElementById('fixed-form-validation-rules').style.display = isColumnMode ? 'none' : 'block';
 
+    // 【修复】只有当字段类型需要选项时，才显示选项输入框
+    const showOptions = !isColumnMode && FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType);
+    document.getElementById('optionsGroup').classList.toggle('d-none', !showOptions);
+    document.getElementById('exportOptionsGroup').classList.toggle('d-none', !showOptions);
+
     // 对于固定表单，显示/隐藏特定校验规则
     if (!isColumnMode) {
         const textRules = document.querySelector('.validation-group.text-rules');
@@ -235,6 +234,9 @@ function openFieldModal(fieldData = null) {
         document.getElementById('fieldLabel').value = fieldData.label;
         document.getElementById('fieldName').value = fieldData.name;
         fieldTypeSelect.value = fieldData.field_type;
+
+        // 【终极修复】在设置字段类型后，立即手动更新一次UI，以确保选项框正确显示
+        updateModalUI();
 
         if (fieldData.options && Array.isArray(fieldData.options)) {
             document.getElementById('fieldOptionLabels').value = fieldData.options.map(opt => opt.label).join('\n');

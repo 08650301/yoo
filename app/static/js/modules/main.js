@@ -308,7 +308,7 @@ function renderFixedForm(container, config, data) {
         const value = (fieldValue === undefined || fieldValue === null || fieldValue === '') ? (field.default_value || '') : fieldValue;
         const rules = (field.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
         const isRequired = (rules.required || '').toLowerCase() === 'true';
-        const isReadonly = (rules.readonly || '').toLowerCase() === 'true';
+        const isDisabled = (rules.disabled || '').toLowerCase() === 'true';
 
         const formGroup = document.createElement('div');
         formGroup.className = 'mb-3';
@@ -316,10 +316,10 @@ function renderFixedForm(container, config, data) {
 
         let fieldHtml = '';
         const requiredAttr = isRequired ? 'required' : '';
-        const readonlyAttr = isReadonly ? 'readonly' : '';
+        const disabledAttr = isDisabled ? 'disabled' : '';
         const labelHtml = `<label class="form-label" for="field-${field.name}">${field.label}${isRequired ? '<span class="required-indicator">*</span>' : ''}</label>`;
 
-        const commonAttrs = `name="${field.name}" id="field-${field.name}" class="form-control" ${requiredAttr} ${readonlyAttr}`;
+        const commonAttrs = `name="${field.name}" id="field-${field.name}" class="form-control" ${requiredAttr} ${disabledAttr}`;
 
         switch (field.type) {
             case 'textarea':
@@ -339,7 +339,7 @@ function renderFixedForm(container, config, data) {
                     const radioId = `field-${field.name}-${index}`;
                     fieldHtml += `
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${opt.value}" ${value === opt.value ? 'checked' : ''} ${requiredAttr} ${readonlyAttr}>
+                            <input class="form-check-input" type="radio" name="${field.name}" id="${radioId}" value="${opt.value}" ${value === opt.value ? 'checked' : ''} ${requiredAttr} ${disabledAttr}>
                             <label class="form-check-label" for="${radioId}">${opt.label}</label>
                         </div>`;
                 });
@@ -352,7 +352,7 @@ function renderFixedForm(container, config, data) {
                     const checkedAttr = selectedValues.includes(opt.value) ? 'checked' : '';
                     fieldHtml += `
                         <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${opt.value}" ${checkedAttr} ${readonlyAttr}>
+                            <input class="form-check-input" type="checkbox" name="${field.name}" id="${checkId}" value="${opt.value}" ${checkedAttr} ${disabledAttr}>
                             <label class="form-check-label" for="${checkId}">${opt.label}</label>
                         </div>`;
                 });
@@ -390,7 +390,12 @@ function renderDynamicTable(container, config, data) {
         <table class="table table-bordered table-hover">
             <thead>
                 <tr>
-                    ${finalColumns.map(col => `<th>${col.label}</th>`).join('')}
+                    ${finalColumns.map(col => {
+                        const rules = (col.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
+                        const isRequired = (rules.required || '').toLowerCase() === 'true';
+                        const requiredIndicator = isRequired ? '<span class="required-indicator" style="color: red;">*</span>' : '';
+                        return `<th>${col.label}${requiredIndicator}</th>`;
+                    }).join('')}
                     <th style="width: 10%;">操作</th>
                 </tr>
             </thead>
@@ -407,11 +412,11 @@ function renderDynamicTable(container, config, data) {
                 const rules = (col.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
                 const isDisabled = (rules.disabled || '').toLowerCase() === 'true';
                 const isRequired = (rules.required || '').toLowerCase() === 'true';
-                const readonlyAttr = isDisabled ? 'readonly' : '';
+                const disabledAttr = isDisabled ? 'disabled' : '';
                 const requiredAttr = isRequired ? 'required' : '';
 
                 let inputHtml = '';
-                const commonAttrs = `class="form-control" name="${col.name}" ${readonlyAttr} ${requiredAttr}`;
+                const commonAttrs = `class="form-control" name="${col.name}" ${disabledAttr} ${requiredAttr}`;
 
                 switch(col.field_type) {
                     case 'textarea':
@@ -458,11 +463,11 @@ window.addTableRow = function() {
         const rules = (col.validation_rules || []).reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {});
         const isDisabled = (rules.disabled || '').toLowerCase() === 'true';
         const isRequired = (rules.required || '').toLowerCase() === 'true';
-        const readonlyAttr = isDisabled ? 'readonly' : '';
+        const disabledAttr = isDisabled ? 'disabled' : '';
         const requiredAttr = isRequired ? 'required' : '';
 
         let inputHtml = '';
-        const commonAttrs = `class="form-control" name="${col.name}" ${readonlyAttr} ${requiredAttr}`;
+        const commonAttrs = `class="form-control" name="${col.name}" ${disabledAttr} ${requiredAttr}`;
 
         switch(col.field_type) {
             case 'textarea':

@@ -81,11 +81,8 @@ def admin_sheet_fields(sheet_id):
         }
         fields_json.append(field_dict)
 
-    # 使用Flask的json.dumps确保正确的JSON序列化
-    from flask import json
-    fields_data = json.dumps(fields_json, ensure_ascii=False)
-
-    return render_template('admin/admin_sheet_fields.html', sheet=sheet, fields_data=fields_data, is_column_mode=is_column_mode)
+    # 直接将Python列表传递给模板，让Jinja2的|tojson过滤器处理序列化
+    return render_template('admin/admin_sheet_fields.html', sheet=sheet, fields_data=fields_json, is_column_mode=is_column_mode)
 
 
 # ==============================================================================

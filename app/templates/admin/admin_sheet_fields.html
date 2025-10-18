@@ -15,7 +15,7 @@
         .table th, .table td { vertical-align: middle; }
     </style>
 </head>
-<body data-sheet-id="{{ sheet.id }}" data-readonly="{{ not sheet.section.template.is_latest | tojson | safe }}" data-fields="{{ fields_data }}" data-is-column-mode="{{ is_column_mode | tojson }}">
+<body data-sheet-id="{{ sheet.id }}" data-readonly="{{ not sheet.section.template.is_latest | tojson | safe }}" data-is-column-mode="{{ is_column_mode | tojson }}">
     <div class="container-fluid mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -85,6 +85,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <script>
+        const allFieldsData = {{ fields_data | tojson | safe }};
+    </script>
+
     <script src="/static/js/admin_api.js"></script>
     <script src="/static/js/admin_sheet_fields.js"></script>
 </body>
