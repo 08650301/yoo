@@ -5,6 +5,7 @@ const isColumnMode = document.body.dataset.isColumnMode === 'true';
 const titleText = isColumnMode ? '列' : '字段';
 
 let allFields = []; // 在这个JS中，我们统一称之为 field，无论UI上显示“字段”还是“列”
+let currentEditingField = null; // 【新】存储当前正在编辑的字段的完整数据
 let currentFieldName = ''; // 当前编辑的字段名称
 try {
     allFields = JSON.parse(document.body.dataset.fields || '[]');
@@ -182,6 +183,7 @@ function updateModalUI() {
 }
 
 function openFieldModal(fieldData = null) {
+    currentEditingField = fieldData; // 【新】保存当前编辑的字段数据
     if (!fieldModal) {
         fieldModal = new bootstrap.Modal(document.getElementById('fieldModal'));
         const labelsEl = document.getElementById('fieldOptionLabels');
@@ -275,28 +277,31 @@ function saveField() {
     const url = fieldId ? `/admin/api/fields/${fieldId}` : `/admin/api/sheets/${sheetId}/fields`;
     const method = fieldId ? 'PUT' : 'POST';
 
-    const validation = {};
-    const validationCheckboxes = ['validationRequired', 'validationDisabled', 'validationAllowEnglishSpace', 'validationAllowChineseSpace'];
-    const validationInputs = ['validationPattern', 'validationMinLength', 'validationMaxLength', 'validationContains', 'validationExcludes', 'validationMinValue', 'validationMaxValue'];
+    // 【最终修复】合并旧规则和新规则，确保隐藏的规则不会丢失
+    const oldRules = (currentEditingField && currentEditingField.validation_rules)
+        ? currentEditingField.validation_rules.reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {})
+        : {};
 
-    // 【修复】收集所有可见的校验规则，无论其值是否为 false
-    validationCheckboxes.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.offsetParent !== null) { // 检查元素是否可见
-            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
-            validation[key] = el.checked ? 'True' : 'False';
+    const newRules = {};
+    const allRuleInputs = document.querySelectorAll('[id^="validation"]');
+
+    allRuleInputs.forEach(el => {
+        // 只处理当前在DOM中可见的输入框
+        if (el.offsetParent !== null) {
+            const ruleType = el.id.replace('validation', '').charAt(0).toLowerCase() + el.id.slice(10);
+            if (el.type === 'checkbox') {
+                newRules[ruleType] = el.checked ? 'True' : 'False';
+            } else {
+                let value = el.value.trim();
+                if (['contains', 'excludes'].includes(ruleType)) {
+                    value = value.replace(/\n/g, ',');
+                }
+                newRules[ruleType] = value;
+            }
         }
     });
 
-    validationInputs.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.offsetParent !== null) { // 只要元素可见就处理
-            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
-            let value = el.value.trim();
-            if (['contains', 'excludes'].includes(key)) value = value.replace(/\n/g, ',');
-            validation[key] = value;
-        }
-    });
+    const validation = { ...oldRules, ...newRules };
 
     const fieldType = document.getElementById('fieldType').value;
     const fieldName = document.getElementById('fieldName').value.trim();
