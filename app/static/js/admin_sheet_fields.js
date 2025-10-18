@@ -277,31 +277,25 @@ function saveField() {
     const url = fieldId ? `/admin/api/fields/${fieldId}` : `/admin/api/sheets/${sheetId}/fields`;
     const method = fieldId ? 'PUT' : 'POST';
 
-    // 【最终修复】合并旧规则和新规则，确保隐藏的规则不会丢失
-    const oldRules = (currentEditingField && currentEditingField.validation_rules)
-        ? currentEditingField.validation_rules.reduce((acc, rule) => ({ ...acc, [rule.rule_type]: rule.rule_value }), {})
-        : {};
-
-    const newRules = {};
+    // 【终极修复】不再尝试合并规则，直接读取所有输入框的当前值并提交
+    const validation = {};
     const allRuleInputs = document.querySelectorAll('[id^="validation"]');
 
     allRuleInputs.forEach(el => {
-        // 只处理当前在DOM中可见的输入框
-        if (el.offsetParent !== null) {
-            const ruleType = el.id.replace('validation', '').charAt(0).toLowerCase() + el.id.slice(10);
-            if (el.type === 'checkbox') {
-                newRules[ruleType] = el.checked ? 'True' : 'False';
-            } else {
-                let value = el.value.trim();
-                if (['contains', 'excludes'].includes(ruleType)) {
-                    value = value.replace(/\n/g, ',');
-                }
-                newRules[ruleType] = value;
+        // 无论是否可见，都读取其值
+        const ruleType = el.id.replace('validation', '').charAt(0).toLowerCase() + el.id.replace('validation', '').slice(1);
+        if (el.type === 'checkbox') {
+            // 对于复选框，我们发送 'True' 或 'False' 字符串
+            validation[ruleType] = el.checked ? 'True' : 'False';
+        } else {
+            // 对于文本输入，我们发送其值
+            let value = el.value.trim();
+            if (['contains', 'excludes'].includes(ruleType)) {
+                value = value.replace(/\n/g, ',');
             }
+            validation[ruleType] = value;
         }
     });
-
-    const validation = { ...oldRules, ...newRules };
 
     const fieldType = document.getElementById('fieldType').value;
     const fieldName = document.getElementById('fieldName').value.trim();
@@ -332,6 +326,7 @@ function saveField() {
     }
 
     if (!payload.label || !payload.name) { Swal.fire('输入错误', '显示名称和内部名称不能为空！', 'warning'); return; }
+
     (method === 'PUT' ? putAPI : postAPI)(url, payload, fieldId ? `${titleText}更新成功！` : `新${titleText}创建成功！`);
 }
 
