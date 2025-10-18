@@ -279,18 +279,18 @@ function saveField() {
     const validationCheckboxes = ['validationRequired', 'validationDisabled', 'validationAllowEnglishSpace', 'validationAllowChineseSpace'];
     const validationInputs = ['validationPattern', 'validationMinLength', 'validationMaxLength', 'validationContains', 'validationExcludes', 'validationMinValue', 'validationMaxValue'];
 
-    // 只收集当前模式下可见的校验规则
+    // 【修复】收集所有可见的校验规则，无论其值是否为 false
     validationCheckboxes.forEach(id => {
         const el = document.getElementById(id);
         if (el && el.offsetParent !== null) { // 检查元素是否可见
             const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
-            if (el.checked) validation[key] = 'True';
+            validation[key] = el.checked ? 'True' : 'False';
         }
     });
 
     validationInputs.forEach(id => {
         const el = document.getElementById(id);
-        if (el && el.offsetParent !== null && el.value.trim()) {
+        if (el && el.offsetParent !== null) { // 只要元素可见就处理
             const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
             let value = el.value.trim();
             if (['contains', 'excludes'].includes(key)) value = value.replace(/\n/g, ',');

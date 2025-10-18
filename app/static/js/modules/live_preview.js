@@ -26,26 +26,14 @@ export function loadChapterPreview(sheetId) {
         });
 }
 
-
 /**
- * 【已重命名】从服务器加载整个项目的初始HTML预览（作为回退）。
+ * 【新】在页面初始加载时，在预览窗格中显示一条提示信息。
  */
-export function loadInitialProjectPreview() {
+export function showInitialPreviewMessage() {
     const previewContainer = document.getElementById('preview-content');
-    if (!previewContainer) return;
-    previewContainer.innerHTML = '<p class="text-muted">正在加载预览...</p>';
-    fetch(`/api/projects/${projectId}/preview`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.html) {
-                previewContainer.innerHTML = data.html;
-            } else {
-                previewContainer.innerHTML = `<p class="text-danger">加载预览失败: ${data.error || '未知错误'}</p>`;
-            }
-        })
-        .catch(error => {
-            previewContainer.innerHTML = `<p class="text-danger">加载预览时发生网络错误: ${error}</p>`;
-        });
+    if (previewContainer) {
+        previewContainer.innerHTML = '<p class="text-muted">请从左侧选择一个表单以查看预览。</p>';
+    }
 }
 
 /**

@@ -272,31 +272,21 @@ def save_sheet_data(project_id, sheet_name):
 def export_project_excel(project_id, section_name):
     return jsonify({"message": "Not implemented"}), 501
 
-from app.services.preview_generator import generate_project_preview_html
-
-@api_bp.route('/projects/<int:project_id>/preview', methods=['GET'])
-def get_project_preview(project_id):
-    """【新】生成整个项目的HTML预览"""
-    try:
-        html_content = generate_project_preview_html(project_id)
-        return jsonify({"html": html_content})
-    except Exception as e:
-        # Log the error e for debugging
-        return jsonify({"error": f"生成预览时出错: {str(e)}"}), 500
+# 不再需要 /projects/.../preview 路由
+# from app.services.preview_generator import generate_project_preview_html
+# @api_bp.route('/projects/<int:project_id>/preview', methods=['GET']) ...
 
 from app.services.preview_generator import generate_sheet_preview_html
 
 @api_bp.route('/sheets/<int:sheet_id>/preview', methods=['GET'])
 def get_sheet_preview(sheet_id):
-    """获取单个Sheet关联章节的HTML预览"""
+    """【新】获取单个Sheet关联的Word文档HTML预览"""
     try:
-        # 注意：这里需要项目的上下文来获取数据，但 sheet_id 本身是唯一的。
-        # 一个简化但有效的方法是：预览暂时只显示结构和字段标签，而不是真实数据。
-        # 更好的方法需要前端传递 project_id。
-        # 我们暂时假设预览不依赖项目数据，只显示模板结构。
         html_content = generate_sheet_preview_html(sheet_id)
         return jsonify({"html": html_content})
     except Exception as e:
+        # 在服务器日志中记录更详细的错误
+        # current_app.logger.error(f"Error generating sheet preview: {e}")
         return jsonify({"error": f"生成预览时出错: {str(e)}"}), 500
 
 @api_bp.route('/projects/<int:project_id>/export_word', methods=['GET'])

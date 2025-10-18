@@ -519,7 +519,8 @@ def create_field(sheet_id):
 
         validation_data = data.get('validation', {})
         for rule_type, rule_value in validation_data.items():
-            if rule_value or rule_value is False:
+            # 【修复】只要值不是 None 就保存，以允许保存 'False' 或空字符串 ''
+            if rule_value is not None:
                 db.session.add(ValidationRule(field_id=new_field.id, rule_type=rule_type, rule_value=str(rule_value)))
 
         db.session.commit()
@@ -579,7 +580,8 @@ def update_field(field_id):
         ValidationRule.query.filter_by(field_id=field_id).delete()
         validation_data = data.get('validation', {})
         for rule_type, rule_value in validation_data.items():
-            if rule_value or rule_value is False:
+            # 【修复】只要值不是 None 就保存，以允许保存 'False' 或空字符串 ''
+            if rule_value is not None:
                 db.session.add(ValidationRule(field_id=field_id, rule_type=rule_type, rule_value=str(rule_value)))
 
         db.session.commit()

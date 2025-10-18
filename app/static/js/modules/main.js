@@ -1,7 +1,7 @@
 // app/static/js/modules/main.js
 
 import { initializeSidebar } from './sidebar_handler.js';
-import { loadInitialProjectPreview, loadChapterPreview, initializeLivePreview, updatePreviewOnLoad } from './live_preview.js';
+import { showInitialPreviewMessage, loadChapterPreview, initializeLivePreview, updatePreviewOnLoad } from './live_preview.js';
 
 const projectId = document.body.dataset.projectId;
 const procurementMethod = document.body.dataset.procurementMethod;
@@ -29,8 +29,8 @@ window.onload = function() {
         });
 
     loadProcurementMethods();
-    // 页面加载时，依然加载旧的整体预览作为默认
-    loadInitialProjectPreview();
+    // 【修复】页面加载时不加载任何预览，而是显示提示信息
+    showInitialPreviewMessage();
 };
 
 // ... (The rest of the functions from project.js are below) ...
