@@ -7,8 +7,6 @@ from app.models import (
     Project, Template, Section, SheetDefinition, FieldDefinition, ConditionalRule,
     FixedFormData, DynamicTableRow
 )
-# 导入新的服务模块
-from app.services import word_processor
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -272,49 +270,17 @@ def save_sheet_data(project_id, sheet_name):
 
 @api_bp.route('/projects/<int:project_id>/export/<string:section_name>')
 def export_project_excel(project_id, section_name):
-    # ... (existing code, no changes needed here)
-    pass
+    return jsonify({"message": "Not implemented"}), 501
 
 @api_bp.route('/projects/<int:project_id>/preview', methods=['GET'])
 def get_word_preview(project_id):
-    try:
-        project = Project.query.get_or_404(project_id)
-        html = word_processor.generate_preview_html(project)
-        return jsonify({"html": html})
-    except (ValueError, FileNotFoundError) as e:
-        return jsonify({"html": f"<p class='text-danger'>错误: {e}</p>"})
-    except Exception as e:
-        return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
+    return jsonify({"message": "Not implemented"}), 501
 
 @api_bp.route('/sheets/<int:sheet_id>/preview', methods=['GET'])
 def get_sheet_preview(sheet_id):
     """获取单个Sheet关联章节的HTML预览"""
-    try:
-        html = word_processor.generate_single_chapter_preview_html(sheet_id)
-        return jsonify({"html": html})
-    except Exception as e:
-        return jsonify({"html": f"<p class='text-danger'>生成预览时发生未知错误: {e}</p>"})
+    return jsonify({"message": "Not implemented"}), 501
 
 @api_bp.route('/projects/<int:project_id>/export_word', methods=['GET'])
 def export_word_document(project_id):
-    try:
-        project = Project.query.get_or_404(project_id)
-        template = Template.query.filter_by(name=project.procurement_method, is_latest=True).first()
-
-        if not template:
-            return jsonify({"error": "未找到有效的模板"}), 404
-
-        # 新的导出函数不再需要 template_config
-        file_stream = word_processor.generate_word_document(project, template, None)
-
-        safe_project_name = "".join([c for c in project.name if c.isalnum() or c in (' ', '-')]).rstrip()
-        filename = f"{safe_project_name}_导出.docx"
-
-        return send_file(
-            file_stream,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
-    except Exception as e:
-        return jsonify({"error": f"生成Word文档时出错: {e}"}), 500
+    return jsonify({"message": "Not implemented"}), 501
