@@ -143,6 +143,13 @@ function updateModalUI() {
     document.getElementById('fixed-form-only-options').style.display = isColumnMode ? 'none' : 'block';
     document.getElementById('fixed-form-validation-rules').style.display = isColumnMode ? 'none' : 'block';
 
+    // 控制选项区域的可见性
+    const optionsGroup = document.getElementById('optionsGroup');
+    if (optionsGroup) {
+        const shouldBeVisible = FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType);
+        optionsGroup.classList.toggle('d-none', !shouldBeVisible);
+    }
+
     // 对于固定表单，显示/隐藏特定校验规则
     if (!isColumnMode) {
         const textRules = document.querySelector('.validation-group.text-rules');
