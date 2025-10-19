@@ -272,22 +272,14 @@ def save_sheet_data(project_id, sheet_name):
 def export_project_excel(project_id, section_name):
     return jsonify({"message": "Not implemented"}), 501
 
-# 不再需要 /projects/.../preview 路由
-# from app.services.preview_generator import generate_project_preview_html
-# @api_bp.route('/projects/<int:project_id>/preview', methods=['GET']) ...
-
-from app.services.preview_generator import generate_sheet_preview_html
+@api_bp.route('/projects/<int:project_id>/preview', methods=['GET'])
+def get_word_preview(project_id):
+    return jsonify({"message": "Not implemented"}), 501
 
 @api_bp.route('/sheets/<int:sheet_id>/preview', methods=['GET'])
 def get_sheet_preview(sheet_id):
-    """【新】获取单个Sheet关联的Word文档HTML预览"""
-    try:
-        html_content = generate_sheet_preview_html(sheet_id)
-        return jsonify({"html": html_content})
-    except Exception as e:
-        # 在服务器日志中记录更详细的错误
-        # current_app.logger.error(f"Error generating sheet preview: {e}")
-        return jsonify({"error": f"生成预览时出错: {str(e)}"}), 500
+    """获取单个Sheet关联章节的HTML预览"""
+    return jsonify({"message": "Not implemented"}), 501
 
 @api_bp.route('/projects/<int:project_id>/export_word', methods=['GET'])
 def export_word_document(project_id):
