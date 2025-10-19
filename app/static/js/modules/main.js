@@ -238,7 +238,48 @@ function createSidebarNav(sections) {
     }
 }
 
+function cleanupDynamicTableRows() {
+    if (!currentSheetName || !masterConfig.sections[currentSectionName] || masterConfig.sections[currentSectionName].forms[currentSheetName].type !== 'dynamic_table') {
+        return;
+    }
+
+    const table = document.querySelector('#sheet-content table');
+    if (!table) return;
+
+    // 【最终修复】只选择用户新添加的行进行清理
+    const newRows = Array.from(table.querySelectorAll('tbody tr[data-is-new="true"]'));
+    let hasChanges = false;
+    newRows.forEach(row => {
+        const inputs = row.querySelectorAll('input:not([name="sequence"]), textarea, select');
+        const isAllEmpty = Array.from(inputs).every(input => !input.value || input.value.trim() === '');
+
+        if (isAllEmpty) {
+            row.remove();
+            hasChanges = true;
+        }
+    });
+
+    if (hasChanges) {
+        // Re-index rows
+        const tbody = table.querySelector('tbody');
+        Array.from(tbody.rows).forEach((r, index) => {
+            r.dataset.rowIndex = index;
+            const seqInput = r.querySelector('input[name="sequence"]');
+            if (seqInput) {
+                seqInput.value = index + 1;
+            }
+        });
+    }
+}
+
+
 function loadForm(sheetName, sectionName) {
+    console.log(`--- Loading form: sheetName='${sheetName}', sectionName='${sectionName}' ---`);
+    // 【新功能】在加载新表单前，清理上一个动态表格的空行
+    if (currentSheetName) { // 只在已经有表单加载时才清理
+        cleanupDynamicTableRows();
+    }
+
     clearInterval(periodicSaveTimer);
     hasChanges = false;
     visibleRankCount = 5;
@@ -302,7 +343,8 @@ function loadForm(sheetName, sectionName) {
 window.loadForm = loadForm;
 
 function renderFixedForm(container, config, data) {
-    container.innerHTML = '';
+    container.innerHTML = '<form id="current-form"></form>';
+    const form = container.querySelector('#current-form');
     config.fields.forEach(field => {
         const fieldValue = data[field.name];
         const value = (fieldValue === undefined || fieldValue === null || fieldValue === '') ? (field.default_value || '') : fieldValue;
@@ -374,7 +416,7 @@ function renderFixedForm(container, config, data) {
         }
 
         formGroup.innerHTML = fieldHtml;
-        container.appendChild(formGroup);
+        form.appendChild(formGroup);
     });
 }
 
@@ -438,7 +480,7 @@ function renderDynamicTable(container, config, data) {
         <button type="button" class="btn btn-success mt-2" onclick="addTableRow()">+ 新增一行</button>
     `;
 
-    container.innerHTML = tableHtml;
+    container.innerHTML = `<form id="current-form">${tableHtml}</form>`;
 }
 
 // 新增：用于动态表格交互的辅助函数
@@ -448,6 +490,7 @@ window.addTableRow = function() {
     const newIndex = tbody.rows.length;
     const newRow = tbody.insertRow();
     newRow.dataset.rowIndex = newIndex;
+    newRow.dataset.isNew = 'true'; // 【最终修复】给新行打上标记
 
     const columns = masterConfig.sections[currentSectionName].forms[currentSheetName].columns || [];
     const finalColumns = [
@@ -604,11 +647,31 @@ function triggerChange() {
 }
 
 function manualSave() {
+    // 【最终修复】在校验前，清理所有动态表格中的空行
+    if (currentSheetName && masterConfig.sections[currentSectionName].forms[currentSheetName].type === 'dynamic_table') {
+        cleanupDynamicTableRows();
+    }
+
+    const form = document.getElementById('current-form');
+    if (form && !form.checkValidity()) {
+        form.reportValidity();
+        Swal.fire({
+            icon: 'error',
+            title: '输入有误',
+            text: '请检查所有必填项！',
+        });
+        return; // 中止保存
+    }
     saveData(false);
 }
 
 function saveData(isAuto) {
     if (!currentSheetName) return;
+
+    // 【最终修复】对于自动保存，同样在发送数据前清理空行
+    if (isAuto && currentSheetName && masterConfig.sections[currentSectionName].forms[currentSheetName].type === 'dynamic_table') {
+        cleanupDynamicTableRows();
+    }
 
     const config = masterConfig.sections[currentSectionName].forms[currentSheetName];
     const formElement = document.getElementById('sheet-content');
