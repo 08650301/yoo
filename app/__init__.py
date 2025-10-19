@@ -48,7 +48,7 @@ def create_app():
         from .routes.admin.rules import admin_rules_bp
         from .routes.admin.word_templates import admin_word_templates_bp
 
-        # 注册 admin 蓝图时，它们自带了 /admin 前缀，无需额外添加
+        # 注册 admin 蓝图
         app.register_blueprint(admin_templates_bp)
         app.register_blueprint(admin_sections_sheets_bp)
         app.register_blueprint(admin_fields_bp)
@@ -60,9 +60,12 @@ def create_app():
         from .routes.api.data import api_data_bp
         from .routes.api.exports import api_exports_bp
 
-        # 注册 api 蓝图时，它们自带了 /api 前缀
+        # 注册 api 蓝图
         app.register_blueprint(api_projects_bp)
         app.register_blueprint(api_data_bp)
         app.register_blueprint(api_exports_bp)
+
+        # 确保 `__init__.py` 文件存在于包目录中
+        from .routes import admin, api
 
         return app
