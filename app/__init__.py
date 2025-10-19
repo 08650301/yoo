@@ -22,6 +22,7 @@ def create_app():
         SECRET_KEY='dev',
         SQLALCHEMY_DATABASE_URI='sqlite:///' + os.path.join(basedir, 'site.db'),
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        UPLOAD_FOLDER=os.path.join(basedir, 'uploads')
     )
 
     # 4. 将扩展与创建的 app 实例关联
@@ -60,10 +61,12 @@ def create_app():
         from .routes.api.projects import api_projects_bp
         from .routes.api.data import api_data_bp
         from .routes.api.exports import api_exports_bp
+        from .routes.api.templates import api_templates_bp
 
         # 注册 api 蓝图 (url_prefix 在各自模块中定义)
         app.register_blueprint(api_projects_bp)
         app.register_blueprint(api_data_bp)
         app.register_blueprint(api_exports_bp)
+        app.register_blueprint(api_templates_bp)
 
         return app

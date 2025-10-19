@@ -29,8 +29,8 @@ window.onload = function() {
         });
 
     loadProcurementMethods();
-    // 页面加载时，依然加载旧的整体预览作为默认
-    loadInitialProjectPreview();
+    // 页面加载时不主动加载任何预览，等待用户选择
+    // loadInitialProjectPreview();
 };
 
 // ... (The rest of the functions from project.js are below) ...
