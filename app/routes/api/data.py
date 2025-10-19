@@ -41,7 +41,7 @@ def get_config_from_db(procurement_method):
             fields_list = []
             for f in fields_query:
                 fields_list.append({
-                    "name": f.name, "label": f.label, "type": f.field_type,
+                    "name": f.name, "label": f.label, "field_type": f.field_type,
                     "default_value": f.default_value, "options": f.options,
                     "validation_rules": [{"rule_type": r.rule_type, "rule_value": r.rule_value} for r in f.validation_rules]
                 })
@@ -73,7 +73,7 @@ def find_sheet_config_from_db(procurement_method, sheet_name):
 
     config = {"type": sheet_def.sheet_type, "model_identifier": sheet_def.model_identifier}
     fields_query = FieldDefinition.query.filter_by(sheet_id=sheet_def.id).order_by(FieldDefinition.display_order).all()
-    fields_list = [{"name": f.name, "label": f.label, "type": f.field_type, "default_value": f.default_value} for f in fields_query]
+    fields_list = [{"name": f.name, "label": f.label, "field_type": f.field_type, "default_value": f.default_value} for f in fields_query]
 
     if sheet_def.sheet_type == 'fixed_form':
         config['fields'] = fields_list

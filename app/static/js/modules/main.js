@@ -321,7 +321,7 @@ function renderFixedForm(container, config, data) {
 
         const commonAttrs = `name="${field.name}" id="field-${field.name}" class="form-control" ${requiredAttr} ${readonlyAttr}`;
 
-        switch (field.type) {
+        switch (field.field_type) {
             case 'textarea':
                 fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
@@ -369,7 +369,7 @@ function renderFixedForm(container, config, data) {
                     </div>`;
                 break;
             default: // text, number, date, etc.
-                fieldHtml = `${labelHtml}<input type="${field.type || 'text'}" value="${value}" ${commonAttrs}>`;
+                fieldHtml = `${labelHtml}<input type="${field.field_type || 'text'}" value="${value}" ${commonAttrs}>`;
                 break;
         }
 
