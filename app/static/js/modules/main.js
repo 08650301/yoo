@@ -274,7 +274,6 @@ function cleanupDynamicTableRows() {
 
 
 function loadForm(sheetName, sectionName) {
-    console.log(`--- Loading form: sheetName='${sheetName}', sectionName='${sectionName}' ---`);
     // 【新功能】在加载新表单前，清理上一个动态表格的空行
     if (currentSheetName) { // 只在已经有表单加载时才清理
         cleanupDynamicTableRows();
@@ -343,8 +342,16 @@ function loadForm(sheetName, sectionName) {
 window.loadForm = loadForm;
 
 function renderFixedForm(container, config, data) {
+    // 【最终修复】增加对 config 和 config.fields 的健壮性检查
+    if (!config || !config.fields || !Array.isArray(config.fields)) {
+        console.error("无法渲染固定表单：'config' 对象或 'config.fields' 数组无效。", config);
+        container.innerHTML = '<div class="alert alert-danger">无法加载表单配置，字段数据缺失。</div>';
+        return;
+    }
+
     container.innerHTML = '<form id="current-form"></form>';
     const form = container.querySelector('#current-form');
+
     config.fields.forEach(field => {
         const fieldValue = data[field.name];
         const value = (fieldValue === undefined || fieldValue === null || fieldValue === '') ? (field.default_value || '') : fieldValue;
