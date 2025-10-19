@@ -26,6 +26,7 @@ def create_app():
 
     # 4. 将扩展与创建的 app 实例关联
     db.init_app(app)
+    # 明确指定迁移目录为项目根目录下的 'migrations'
     migrate.init_app(app, db, directory=os.path.join(basedir, 'migrations'))
 
     # 5. 在应用上下文中执行后续操作
@@ -48,7 +49,7 @@ def create_app():
         from .routes.admin.rules import admin_rules_bp
         from .routes.admin.word_templates import admin_word_templates_bp
 
-        # 注册 admin 蓝图
+        # 注册 admin 蓝图 (url_prefix 在各自模块中定义)
         app.register_blueprint(admin_templates_bp)
         app.register_blueprint(admin_sections_sheets_bp)
         app.register_blueprint(admin_fields_bp)
@@ -60,12 +61,9 @@ def create_app():
         from .routes.api.data import api_data_bp
         from .routes.api.exports import api_exports_bp
 
-        # 注册 api 蓝图
+        # 注册 api 蓝图 (url_prefix 在各自模块中定义)
         app.register_blueprint(api_projects_bp)
         app.register_blueprint(api_data_bp)
         app.register_blueprint(api_exports_bp)
-
-        # 确保 `__init__.py` 文件存在于包目录中
-        from .routes import admin, api
 
         return app
