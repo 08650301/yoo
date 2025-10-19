@@ -34,27 +34,46 @@ def upload_chapter_template(section_id):
     os.makedirs(upload_path, exist_ok=True)
     filepath = os.path.join(upload_path, filename)
 
+    # 检查数据库中是否已存在同名文件记录
+    existing_chapter = WordTemplateChapter.query.filter_by(section_id=section_id, filename=filename).first()
+
     file.save(filepath)
 
-    max_order = db.session.query(db.func.max(WordTemplateChapter.display_order)).filter_by(section_id=section_id).scalar() or -1
+    if existing_chapter:
+        # 文件已存在，仅覆盖文件，不创建新记录
+        # 更新文件路径以防万一
+        existing_chapter.filepath = filepath
+        db.session.commit()
+        return jsonify({
+            "message": "章节模板已成功覆盖",
+            "chapter": {
+                "id": existing_chapter.id,
+                "filename": existing_chapter.filename,
+                "display_order": existing_chapter.display_order
+            },
+            "existed": True # 添加一个标志，以便前端可以区分
+        }), 200
+    else:
+        # 文件不存在，创建新记录
+        max_order = db.session.query(db.func.max(WordTemplateChapter.display_order)).filter_by(section_id=section_id).scalar() or -1
+        new_chapter = WordTemplateChapter(
+            section_id=section_id,
+            filename=filename,
+            filepath=filepath,
+            display_order=max_order + 1
+        )
+        db.session.add(new_chapter)
+        db.session.commit()
 
-    new_chapter = WordTemplateChapter(
-        section_id=section_id,
-        filename=filename,
-        filepath=filepath,
-        display_order=max_order + 1
-    )
-    db.session.add(new_chapter)
-    db.session.commit()
-
-    return jsonify({
-        "message": "章节模板上传成功",
-        "chapter": {
-            "id": new_chapter.id,
-            "filename": new_chapter.filename,
-            "display_order": new_chapter.display_order
-        }
-    }), 201
+        return jsonify({
+            "message": "章节模板上传成功",
+            "chapter": {
+                "id": new_chapter.id,
+                "filename": new_chapter.filename,
+                "display_order": new_chapter.display_order
+            },
+            "existed": False
+        }), 201
 
 @admin_word_templates_bp.route('/chapters/<int:chapter_id>', methods=['DELETE'])
 def delete_chapter_template(chapter_id):
