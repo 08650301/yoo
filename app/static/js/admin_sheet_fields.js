@@ -337,8 +337,230 @@ function deleteField(fieldId, fieldLabel) {
     deleteAPI(`/admin/api/fields/${fieldId}`, `${titleText} "${fieldLabel}"`);
 }
 
-// --- 联动规则管理 (省略，未改动) ---
-// ...
+// --- 联动规则管理 ---
+
+let allRules = [];
+
+// 操作符和动作的定义
+const OPERATORS = {
+    'equals': '等于',
+    'not_equals': '不等于',
+    'contains': '包含',
+    'not_contains': '不包含'
+};
+const ACTIONS = {
+    'show': '显示',
+    'hide': '隐藏',
+    'enable': '启用',
+    'disable': '禁用'
+};
+
+async function fetchAndRenderRules() {
+    try {
+        const response = await fetch(`/admin/api/sheets/${sheetId}/conditional_rules`);
+        if (!response.ok) throw new Error('获取规则失败');
+        allRules = await response.json();
+        renderRulesList();
+    } catch (error) {
+        console.error('获取联动规则时出错:', error);
+        const container = document.getElementById('rules-list');
+        if(container) container.innerHTML = '<div class="list-group-item text-danger text-center">加载规则失败。</div>';
+    }
+}
+
+function renderRulesList() {
+    const container = document.getElementById('rules-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (allRules.length === 0) {
+        container.innerHTML = '<div class="list-group-item text-muted text-center">还没有任何联动规则。</div>';
+        return;
+    }
+
+    allRules.forEach(rule => {
+        const ruleElement = document.createElement('div');
+        ruleElement.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+        // 构建规则的文字描述
+        const ifClause = rule.definition.if;
+        const thenClauses = rule.definition.then;
+        const triggerField = allFields.find(f => f.name === ifClause.field);
+        const triggerFieldLabel = triggerField ? triggerField.label : ifClause.field;
+
+        let description = `<strong>${rule.name}:</strong> 如果 <em>${triggerFieldLabel}</em> ${OPERATORS[ifClause.operator]} "<em>${ifClause.value}</em>"，那么 `;
+
+        const thenDescriptions = thenClauses.map(action => {
+            const targetField = allFields.find(f => f.name === action.target);
+            const targetFieldLabel = targetField ? targetField.label : action.target;
+            return `${ACTIONS[action.action]} <em>${targetFieldLabel}</em>`;
+        });
+        description += thenDescriptions.join(', ');
+
+        ruleElement.innerHTML = `
+            <div>${description}</div>
+            <div>
+                <button class="btn btn-outline-info btn-sm" onclick='openRuleModal(${JSON.stringify(rule)})'>${isReadonly ? '查看' : '编辑'}</button>
+                ${!isReadonly ? `<button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteRule(${rule.id}, '${rule.name}')">删除</button>` : ''}
+            </div>
+        `;
+        container.appendChild(ruleElement);
+    });
+}
+
+function openRuleModal(ruleData = null) {
+    if (!ruleModal) {
+        ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+    }
+
+    // 填充 "IF" 条件中的字段下拉列表
+    const ifFieldSelect = document.getElementById('if-field');
+    ifFieldSelect.innerHTML = '<option value="">-- 选择触发字段 --</option>';
+    allFields.forEach(field => {
+        if (field.id !== -1) { // 排除“序号”等不可操作字段
+            ifFieldSelect.innerHTML += `<option value="${field.name}">${field.label} (${field.name})</option>`;
+        }
+    });
+
+    // 填充操作符下拉列表
+    const ifOperatorSelect = document.getElementById('if-operator');
+    ifOperatorSelect.innerHTML = '';
+    for (const [key, value] of Object.entries(OPERATORS)) {
+        ifOperatorSelect.innerHTML += `<option value="${key}">${value}</option>`;
+    }
+
+    // 清空表单
+    document.getElementById('ruleId').value = '';
+    document.getElementById('ruleName').value = '';
+    document.getElementById('if-value').value = '';
+    document.getElementById('then-actions').innerHTML = '';
+
+    if (ruleData) {
+        document.getElementById('ruleModalTitle').textContent = '编辑联动规则';
+        // TODO: 填充编辑数据
+    } else {
+        document.getElementById('ruleModalTitle').textContent = '新增联动规则';
+        // 默认添加一个 "THEN" 动作块
+        addActionBlock('then');
+    }
+
+    ruleModal.show();
+}
+
+function addActionBlock(type) {
+    const container = document.getElementById(`${type}-actions`);
+    const blockId = `action-block-${Date.now()}`;
+    const newBlock = document.createElement('div');
+    newBlock.className = 'row align-items-center mb-2';
+    newBlock.id = blockId;
+
+    // 填充动作下拉列表
+    let actionOptions = '';
+    for (const [key, value] of Object.entries(ACTIONS)) {
+        actionOptions += `<option value="${key}">${value}</option>`;
+    }
+
+    // 填充目标字段下拉列表
+    let targetFieldOptions = '<option value="">-- 选择目标字段 --</option>';
+    const triggerFieldName = document.getElementById('if-field').value;
+    allFields.forEach(field => {
+        // 关键约束：目标字段不能是触发字段
+        if (field.id !== -1 && field.name !== triggerFieldName) {
+            targetFieldOptions += `<option value="${field.name}">${field.label} (${field.name})</option>`;
+        }
+    });
+
+    newBlock.innerHTML = `
+        <div class="col-md-5"><select class="form-select action-target">${targetFieldOptions}</select></div>
+        <div class="col-md-5"><select class="form-select action-verb">${actionOptions}</select></div>
+        <div class="col-md-2"><button type="button" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('${blockId}').remove()">移除</button></div>
+    `;
+    container.appendChild(newBlock);
+}
+
+// 监听 "IF" 字段的变动，以实时更新 "THEN" 块中的目标字段列表
+document.getElementById('if-field').addEventListener('change', () => {
+    const thenBlocks = document.querySelectorAll('#then-actions .row');
+    thenBlocks.forEach(block => {
+        const selectedTarget = block.querySelector('.action-target').value;
+        const triggerFieldName = document.getElementById('if-field').value;
+
+        let newTargetOptions = '<option value="">-- 选择目标字段 --</option>';
+        allFields.forEach(field => {
+            if (field.id !== -1 && field.name !== triggerFieldName) {
+                newTargetOptions += `<option value="${field.name}">${field.label} (${field.name})</option>`;
+            }
+        });
+
+        const targetSelect = block.querySelector('.action-target');
+        targetSelect.innerHTML = newTargetOptions;
+
+        // 尝试保留之前的选项
+        if (selectedTarget && selectedTarget !== triggerFieldName) {
+            targetSelect.value = selectedTarget;
+        }
+    });
+});
+
+function saveRule() {
+    const ruleId = document.getElementById('ruleId').value;
+    const url = ruleId
+        ? `/admin/api/conditional_rules/${ruleId}`
+        : `/admin/api/sheets/${sheetId}/conditional_rules`;
+    const method = ruleId ? 'PUT' : 'POST';
+
+    const ruleName = document.getElementById('ruleName').value.trim();
+    if (!ruleName) {
+        Swal.fire('输入错误', '规则名称不能为空！', 'warning');
+        return;
+    }
+
+    // 构建 definition 对象
+    const definition = {
+        if: {
+            field: document.getElementById('if-field').value,
+            operator: document.getElementById('if-operator').value,
+            value: document.getElementById('if-value').value.trim()
+        },
+        then: []
+    };
+
+    const thenBlocks = document.querySelectorAll('#then-actions .row');
+    thenBlocks.forEach(block => {
+        const target = block.querySelector('.action-target').value;
+        const action = block.querySelector('.action-verb').value;
+        if (target && action) {
+            definition.then.push({ target, action });
+        }
+    });
+
+    // 前端验证
+    if (!definition.if.field || !definition.if.value) {
+        Swal.fire('输入错误', '“如果”条件的所有部分都必须填写！', 'warning');
+        return;
+    }
+    if (definition.then.length === 0) {
+        Swal.fire('输入错误', '必须至少有一个有效的“那么”动作！', 'warning');
+        return;
+    }
+
+    // 后端也会做这个校验，但前端校验可以提供更即时的反馈
+    if (definition.then.some(action => action.target === definition.if.field)) {
+         Swal.fire('配置错误', '触发条件的字段不能作为目标字段！', 'warning');
+        return;
+    }
+
+    const payload = {
+        name: ruleName,
+        definition: definition
+    };
+
+    (method === 'PUT' ? putAPI : postAPI)(url, payload, ruleId ? `规则更新成功！` : `新规则创建成功！`);
+}
+
+function deleteRule(ruleId, ruleName) {
+    deleteAPI(`/admin/api/conditional_rules/${ruleId}`, `联动规则 "${ruleName}"`);
+}
 
 // --- 通用 ---
 function initializeSortable() {
