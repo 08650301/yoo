@@ -1,32 +1,13 @@
-# This file makes the 'models' directory a Python package.
-# We import all the models from the submodules here
-# to make them easily accessible from 'app.models'.
+# app/models/__init__.py
 
-# Import models from project.py
-from .project import Project, FixedFormData
-
-# Import models from template_definition.py
-from .template_definition import (
-    Template,
-    Section,
-    SheetDefinition,
-    FieldDefinition,
-    ValidationRule,
-    ConditionalRule,
-    WordTemplateChapter
-)
-
-# Import models from the new dynamic_data.py
+# 导入所有模型，以便 Flask-Migrate 和 SQLAlchemy 可以发现它们
+from .project import Project
+from .template import Template
+from .section import Section
+from .word_template_chapter import WordTemplateChapter
+from .sheet_definition import SheetDefinition
+from .field_definition import FieldDefinition
+from .validation_rule import ValidationRule
+from .conditional_rule import ConditionalRule
 from .dynamic_data import DynamicTableRow
-
-# It's a good practice to define __all__ to specify what gets imported
-# when a client does 'from app.models import *'
-__all__ = [
-    # from project
-    'Project', 'FixedFormData',
-    # from template_definition
-    'Template', 'Section', 'SheetDefinition', 'FieldDefinition',
-    'ValidationRule', 'ConditionalRule', 'WordTemplateChapter',
-    # from dynamic_data
-    'DynamicTableRow'
-]
+from .fixed_form_data import FixedFormData
