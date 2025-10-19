@@ -33,7 +33,7 @@ function handleApiResponse(response) {
  * @param {boolean} noReload - 如果为 true，则成功后不刷新页面
  * @returns {Promise}
  */
-window.postAPI = function(url, data, successMessage, noReload = false) {
+function postAPI(url, data, successMessage, noReload = false) {
     return fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +71,7 @@ window.postAPI = function(url, data, successMessage, noReload = false) {
  * @param {boolean} noReload - 如果为 true，则成功后不刷新页面
  * @returns {Promise}
  */
-window.putAPI = function(url, data, successMessage, noReload = false) {
+function putAPI(url, data, successMessage, noReload = false) {
     return fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -108,7 +108,7 @@ window.putAPI = function(url, data, successMessage, noReload = false) {
  * @param {boolean} noReload - 如果为 true，则成功后不刷新页面
  * @returns {Promise}
  */
-window.deleteAPI = function(url, itemName, noReload = false) {
+function deleteAPI(url, itemName, noReload = false) {
     return new Promise((resolve, reject) => {
         Swal.fire({
             title: `您确定要永久删除 "${itemName}" 吗？`,

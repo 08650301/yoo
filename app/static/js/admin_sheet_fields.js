@@ -143,13 +143,6 @@ function updateModalUI() {
     document.getElementById('fixed-form-only-options').style.display = isColumnMode ? 'none' : 'block';
     document.getElementById('fixed-form-validation-rules').style.display = isColumnMode ? 'none' : 'block';
 
-    // 控制选项区域的可见性
-    const optionsGroup = document.getElementById('optionsGroup');
-    if (optionsGroup) {
-        const shouldBeVisible = FIELD_TYPES_REQUIRING_OPTIONS.includes(fieldType);
-        optionsGroup.classList.toggle('d-none', !shouldBeVisible);
-    }
-
     // 对于固定表单，显示/隐藏特定校验规则
     if (!isColumnMode) {
         const textRules = document.querySelector('.validation-group.text-rules');
@@ -188,7 +181,6 @@ function updateModalUI() {
 function openFieldModal(fieldData = null) {
     if (!fieldModal) {
         fieldModal = new bootstrap.Modal(document.getElementById('fieldModal'));
-        document.getElementById('fieldType').addEventListener('change', updateModalUI);
         const labelsEl = document.getElementById('fieldOptionLabels');
         const valuesEl = document.getElementById('fieldOptionValues');
         labelsEl.addEventListener('scroll', () => { valuesEl.scrollTop = labelsEl.scrollTop; });
@@ -284,22 +276,28 @@ function saveField() {
     const validationCheckboxes = ['validationRequired', 'validationDisabled', 'validationAllowEnglishSpace', 'validationAllowChineseSpace'];
     const validationInputs = ['validationPattern', 'validationMinLength', 'validationMaxLength', 'validationContains', 'validationExcludes', 'validationMinValue', 'validationMaxValue'];
 
-    // 只收集当前模式下可见的校验规则
+    // 收集所有已定义的校验规则，无论其当前是否可见
     validationCheckboxes.forEach(id => {
         const el = document.getElementById(id);
-        if (el && el.offsetParent !== null) { // 检查元素是否可见
-            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
-            if (el.checked) validation[key] = 'True';
+        if (el && el.checked) {
+            // 修正键名转换逻辑
+            const key = id.replace('validation', '');
+            const finalKey = key.charAt(0).toLowerCase() + key.slice(1);
+            validation[finalKey] = 'True';
         }
     });
 
     validationInputs.forEach(id => {
         const el = document.getElementById(id);
-        if (el && el.offsetParent !== null && el.value.trim()) {
-            const key = id.replace('validation', '').charAt(0).toLowerCase() + id.slice(10);
+        if (el && el.value.trim()) {
+            // 修正键名转换逻辑
+            const key = id.replace('validation', '');
+            const finalKey = key.charAt(0).toLowerCase() + key.slice(1);
             let value = el.value.trim();
-            if (['contains', 'excludes'].includes(key)) value = value.replace(/\n/g, ',');
-            validation[key] = value;
+            if (['contains', 'excludes'].includes(finalKey)) {
+                value = value.replace(/\n/g, ',');
+            }
+            validation[finalKey] = value;
         }
     });
 
