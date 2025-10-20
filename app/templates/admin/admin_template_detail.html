@@ -1,128 +1,143 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-t-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>管理模板: {{ template.name }} V{{template.version}}</title>
+    <title>管理模板: {{ template.name }} V{{ template.version }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
-        .section-card { margin-bottom: 2rem; }
-        .swal2-container { z-index: 2000; }
-        .swal2-title { font-size: 1.25rem !important; }
-        .swal2-html-container, .swal2-content { font-size: 0.9rem !important; }
-        .section-handle, .sheet-handle { cursor: grab; }
+        .handle { cursor: grab; }
         .sortable-ghost { opacity: 0.4; background: #f0f0f0; }
+        .swal2-container { z-index: 2000; }
+        .action-icon {
+            cursor: pointer;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        .list-group-item:hover .action-icon,
+        .accordion-header:hover .action-icon {
+            visibility: visible;
+            opacity: 1;
+        }
+        .accordion-button::after {
+            transition: transform 0.2s ease-in-out;
+        }
     </style>
 </head>
-<body data-template-id="{{ template.id }}" data-readonly="{{ readonly | tojson }}">
-    <div class="container mt-5">
+<body data-template-id="{{ template.id }}" data-readonly="{{ not template.is_latest | tojson | safe }}">
+    <div class="container mt-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="h2">管理模板: <span class="text-primary">{{ template.name }}</span> <span class="badge bg-info">V{{template.version}}</span></h1>
-                <a href="/admin/templates">« 返回模板列表</a>
-                <span class="mx-2">|</span>
-                <a href="/admin/templates/history/{{ template.name }}">查看版本历史</a>
+                <h1 class="h2">管理模板: <span class="text-primary">{{ template.name }}</span> <span class="badge bg-secondary">V{{ template.version }}</span></h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('admin_pages.route_admin_templates_list') }}">模板管理</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">{{ template.name }} V{{ template.version }}</li>
+                    </ol>
+                </nav>
             </div>
             <div>
-                {% if not readonly %}
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importExcelModal">从Excel导入</button>
-                <button class="btn btn-primary" onclick="openNewSectionModal()">+ 新增分区</button>
+                <a href="{{ url_for('admin_pages.route_admin_templates_list') }}" class="btn btn-outline-secondary">返回列表</a>
+                {% if template.is_latest %}
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#newSectionModal">
+                        <i class="bi bi-plus-circle-fill me-1"></i> 新增分区
+                    </button>
+                    <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#importExcelModal">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i> 从Excel导入
+                    </button>
                 {% else %}
-                <span class="badge bg-warning text-dark">只读模式</span>
+                    <span class="badge bg-warning text-dark fs-6">这是一个旧版本，所有内容均为只读。</span>
                 {% endif %}
             </div>
         </div>
 
-        {% if readonly %}
-        <div class="alert alert-warning">
-            您正在查看一个历史版本，此页面为 <strong>只读模式</strong>，无法进行任何修改操作。
-        </div>
-        {% else %}
-        <div class="alert alert-info">提示：您可以拖动分区卡片或每个分区内的Sheet行来调整它们的显示顺序。</div>
-        {% endif %}
-
-
-        <div id="sections-container">
-            {% for section in sections %}
-            <div class="card section-card" data-id="{{ section.id }}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <span class="section-handle me-2 {% if readonly %}d-none{% endif %}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-                        </span>
-                        <h5 class="mb-0">{{ section.name }}</h5>
-                    </div>
-                    {% if not readonly %}
-                    <div>
-                        <button class="btn btn-outline-secondary btn-sm" onclick="openEditSectionModal({{ section.id }}, '{{ section.name }}')">编辑名称</button>
-                        <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSection({{ section.id }}, '{{ section.name }}')">删除分区</button>
-                        <button class="btn btn-primary btn-sm ms-2" onclick="openNewSheetModal({{ section.id }})">+ 新增Sheet</button>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush sheets-list" data-section-id="{{ section.id }}">
-                        {% if section.sheets %}
-                            {% for sheet in section.sheets %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ sheet.id }}">
-                                <div class="d-flex align-items-center">
-                                    <span class="sheet-handle me-2 {% if readonly %}d-none{% endif %}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-grip-vertical" viewBox="0 0 16 16"><path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zM7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-                                    </span>
-                                    <div>
-                                        <span class="fw-bold">{{ sheet.name }}</span>
-                                        <small class="text-muted ms-2">({{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }})</small>
-                                        {% if sheet.model_identifier %}
-                                            <span class="badge bg-secondary">{{ sheet.model_identifier }}</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div>
-                                    <a href="/admin/sheet/{{ sheet.id }}/fields" class="btn btn-outline-info btn-sm">管理字段</a>
-                                    {% if not readonly %}
-                                    <button class="btn btn-outline-primary btn-sm ms-2"
-                                            onclick="openLinkChapterModal({{ section.id }}, {{ sheet.id }}, '{{ sheet.name }}', {{ sheet.word_template_chapter_id or 'null' }})">
-                                        关联文档
-                                    </button>
-                                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }}, '{{ sheet.name }}')">删除</button>
+        <div class="accordion" id="sections-accordion">
+            {% for section in template.sections %}
+                <div class="accordion-item" data-section-id="{{ section.id }}">
+                    <h2 class="accordion-header d-flex align-items-center">
+                        {% if template.is_latest %}
+                        <span class="handle p-2" title="拖动排序"><i class="bi bi-grip-vertical"></i></span>
+                        {% endif %}
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ section.id }}">
+                            {{ section.name }}
+                        </button>
+                        {% if template.is_latest %}
+                        <div class="ms-auto p-2 d-flex align-items-center">
+                           <i class="bi bi-pencil-square action-icon me-2" title="编辑分区名称" onclick="openEditSectionModal({{ section.id }}, '{{ section.name }}')"></i>
+                           <i class="bi bi-trash-fill action-icon text-danger me-2" title="删除分区" onclick="deleteSection({{ section.id }})"></i>
+                        </div>
+                        {% endif %}
+                    </h2>
+                    <div id="collapse-{{ section.id }}" class="accordion-collapse collapse">
+                        <div class="accordion-body">
+                            <div class="row">
+                                <!-- 左侧：Sheet 列表 -->
+                                <div class="col-md-8">
+                                    <h5><i class="bi bi-card-list me-1"></i> 表单列表 (Sheets)</h5>
+                                    <ul class="list-group sheets-list" data-section-id="{{ section.id }}">
+                                        {% for sheet in section.sheets %}
+                                            <li class="list-group-item d-flex justify-content-between align-items-center" data-sheet-id="{{ sheet.id }}">
+                                                <div>
+                                                    {% if template.is_latest %}<span class="handle me-2" title="拖动排序"><i class="bi bi-grip-vertical"></i></span>{% endif %}
+                                                    <a href="{{ url_for('admin_fields.admin_sheet_fields', sheet_id=sheet.id) }}">{{ sheet.name }}</a>
+                                                    <span class="badge bg-light text-dark ms-2">{{ '固定表单' if sheet.sheet_type == 'fixed_form' else '动态表格' }}</span>
+                                                    {% if sheet.word_template_chapter_id %}
+                                                        <span class="badge bg-info text-dark ms-2" title="已关联文档"><i class="bi bi-file-earmark-word-fill"></i></span>
+                                                    {% endif %}
+                                                </div>
+                                                <div>
+                                                    <a href="{{ url_for('admin_fields.admin_sheet_fields', sheet_id=sheet.id) }}" class="btn btn-outline-primary btn-sm">管理{{ '列' if sheet.is_dynamic_table else '字段' }}</a>
+                                                    {% if template.is_latest %}
+                                                    <button class="btn btn-outline-secondary btn-sm ms-2" onclick="openLinkChapterModal({{ sheet.id }}, '{{ sheet.name }}', {{ sheet.word_template_chapter_id or 'null' }})">关联文档</button>
+                                                    <button class="btn btn-outline-danger btn-sm ms-2" onclick="deleteSheet({{ sheet.id }})"><i class="bi bi-trash"></i></button>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% else %}
+                                            <li class="list-group-item text-muted">此分区下还没有任何表单。</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% if template.is_latest %}
+                                    <button class="btn btn-secondary btn-sm mt-3" onclick="openNewSheetModal({{ section.id }})"><i class="bi bi-plus"></i> 新增表单</button>
                                     {% endif %}
                                 </div>
-                            </li>
-                            {% endfor %}
-                        {% else %}
-                            <li class="list-group-item text-muted">此分区下还没有任何Sheet。</li>
-                        {% endif %}
-                    </ul>
-                </div>
-                <div class="card-footer">
-                    <h6 class="card-subtitle mb-2 text-muted">本分区章节Word文档</h6>
-                    {% if not readonly %}
-                    <div class="mb-2">
-                        <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('chapter-file-input-{{ section.id }}').click();">+ 上传章节文档</button>
-                        <input type="file" id="chapter-file-input-{{ section.id }}" class="d-none" accept=".docx" onchange="uploadChapterFile({{ section.id }}, this.files[0])">
+
+                                <!-- 右侧：Word 模板章节 -->
+                                <div class="col-md-4">
+                                    <h5><i class="bi bi-file-earmark-word me-1"></i> 章节文档</h5>
+                                    <div id="chapters-list-{{ section.id }}" class="list-group chapters-list mb-3" data-section-id="{{ section.id }}">
+                                        <!-- Word 模板将由 JavaScript 动态加载 -->
+                                        <div class="list-group-item text-muted">正在加载...</div>
+                                    </div>
+                                    {% if template.is_latest %}
+                                    <div class="d-grid">
+                                        <input type="file" id="word-template-upload-{{ section.id }}" class="d-none" accept=".docx" onchange="uploadWordTemplate({{ section.id }})">
+                                        <button class="btn btn-outline-success btn-sm" onclick="document.getElementById('word-template-upload-{{ section.id }}').click();">
+                                            <i class="bi bi-upload me-1"></i> 上传章节文档
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    {% endif %}
-                    <ul id="chapters-list-{{ section.id }}" class="list-group chapters-list-group" data-section-id="{{ section.id }}">
-                        <li class="list-group-item text-muted placeholder-item">正在加载...</li>
-                    </ul>
                 </div>
-            </div>
+            {% else %}
+                <div class="card card-body text-center">
+                    <p class="mb-0">此模板下还没有任何分区。请点击“新增分区”来开始构建模板。</p>
+                </div>
             {% endfor %}
         </div>
-
-        {% if not sections %}
-            <div class="text-center p-5 border rounded bg-light">
-                <p class="text-muted">此模板下还没有任何分区，请点击右上角的“+ 新增分区”开始构建。</p>
-            </div>
-        {% endif %}
     </div>
 
     {% include 'partials/_template_detail_modals.html' %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/static/js/admin_api.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="/static/js/admin_api.js"></script>
     <script src="/static/js/template_detail.js"></script>
 </body>
 </html>
