@@ -34,12 +34,10 @@ def create_app():
         app.register_blueprint(main_bp)
 
         # Modular Admin blueprints
-        from .routes.admin.templates import admin_templates_bp
         from .routes.admin.sections_sheets import admin_sections_sheets_bp
         from .routes.admin.fields import admin_fields_bp
         from .routes.admin.rules import admin_rules_bp
         from .routes.admin.word_templates import admin_word_templates_bp
-        app.register_blueprint(admin_templates_bp)
         app.register_blueprint(admin_sections_sheets_bp)
         app.register_blueprint(admin_fields_bp)
         app.register_blueprint(admin_rules_bp)

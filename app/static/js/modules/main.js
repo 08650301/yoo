@@ -321,7 +321,7 @@ function renderFixedForm(container, config, data) {
 
         const commonAttrs = `name="${field.name}" id="field-${field.name}" class="form-control" ${requiredAttr} ${readonlyAttr}`;
 
-        switch (field.field_type) {
+        switch (field.field_type) { // CORRECTED
             case 'textarea':
                 fieldHtml = `${labelHtml}<textarea ${commonAttrs} rows="3">${value}</textarea>`;
                 break;
@@ -369,7 +369,7 @@ function renderFixedForm(container, config, data) {
                     </div>`;
                 break;
             default: // text, number, date, etc.
-                fieldHtml = `${labelHtml}<input type="${field.field_type || 'text'}" value="${value}" ${commonAttrs}>`;
+                fieldHtml = `${labelHtml}<input type="${field.field_type || 'text'}" value="${value}" ${commonAttrs}>`; // CORRECTED
                 break;
         }
 
@@ -611,10 +611,10 @@ function saveData(isAuto) {
         payload = {};
         // Manually build payload to handle new field types
         config.fields.forEach(field => {
-            if (field.type === 'checkbox-group') {
+            if (field.field_type === 'checkbox-group') { // CORRECTED
                 const checkedBoxes = formElement.querySelectorAll(`input[name="${field.name}"]:checked`);
                 payload[field.name] = Array.from(checkedBoxes).map(cb => cb.value).join(',');
-            } else if (field.type === 'select-multiple') {
+            } else if (field.field_type === 'select-multiple') { // CORRECTED
                 const hiddenInput = formElement.querySelector(`#custom-select-${field.name} input[type="hidden"]`);
                 if (hiddenInput) {
                     payload[field.name] = hiddenInput.value;
