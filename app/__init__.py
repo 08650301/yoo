@@ -39,11 +39,13 @@ def create_app():
         from .routes.admin.rules import admin_rules_bp
         from .routes.admin.word_templates import admin_word_templates_bp
         from .routes.admin.pages import admin_pages_bp  # 导入新的页面蓝图
+        from .routes.admin.templates import admin_templates_bp # 导入新的模板API蓝图
         app.register_blueprint(admin_sections_sheets_bp)
         app.register_blueprint(admin_fields_bp)
         app.register_blueprint(admin_rules_bp)
         app.register_blueprint(admin_word_templates_bp)
         app.register_blueprint(admin_pages_bp)  # 注册新的页面蓝图
+        app.register_blueprint(admin_templates_bp) # 注册新的模板API蓝图
 
         # Modular API blueprints
         from .routes.api.projects import api_projects_bp
